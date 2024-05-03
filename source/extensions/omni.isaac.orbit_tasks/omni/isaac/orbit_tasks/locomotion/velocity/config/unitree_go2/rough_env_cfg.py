@@ -6,6 +6,7 @@
 from omni.isaac.orbit.utils import configclass
 
 from omni.isaac.orbit_tasks.locomotion.velocity.velocity_env_cfg import LocomotionVelocityRoughEnvCfg
+import omni.isaac.orbit_tasks.locomotion.velocity.mdp as mdp
 
 ##
 # Pre-defined configs
@@ -82,3 +83,15 @@ class UnitreeGo2RoughEnvCfg_PLAY(UnitreeGo2RoughEnvCfg):
         # remove random pushing event
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+
+@configclass
+class UnitreeGo2RoughEnvCfg_PLAYCONTROL(UnitreeGo2RoughEnvCfg_PLAY):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
+
+        self.commands.base_velocity = mdp.UserVelocityCommandCfg(
+			asset_name="robot",
+			debug_vis=True,
+			resampling_time_range=(1000.0, 1000.0), # not used 
+		)

@@ -19,10 +19,9 @@ parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL")
 parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline")
 parser.add_argument("--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations")
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
-parser.add_argument("--task", type=str, default=None, help="Name of the task")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
-parser.add_argument("--lin_sensi", type=float, default=4, help="Gamepad linear speed sensitivity")
-parser.add_argument("--rot_sensi", type=float, default=3.14, help="Gamepad rotational speed sensitivity")
+parser.add_argument("--lin_sensi", type=float, default=2, help="Gamepad linear speed sensitivity")
+parser.add_argument("--rot_sensi", type=float, default=3.14/2, help="Gamepad rotational speed sensitivity")
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -48,16 +47,19 @@ from omni.isaac.orbit_tasks.utils import get_checkpoint_path, parse_env_cfg
 from omni.isaac.orbit_tasks.utils.wrappers.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_onnx
 
 
+TASK = "Isaac-Velocity-Rough-Unitree-Go2-Play-v1"
+NBENVS = 1
+
 def main():
 	"""Play with RSL-RL agent."""
 	# parse configuration
 	env_cfg = parse_env_cfg(
-		args_cli.task, use_gpu=not args_cli.cpu, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
+		TASK, use_gpu=not args_cli.cpu, num_envs=NBENVS, use_fabric=not args_cli.disable_fabric
 	)
-	agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
+	agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(TASK, args_cli)
 
 	# create isaac environment
-	env = gym.make(args_cli.task, cfg=env_cfg)
+	env = gym.make(TASK, cfg=env_cfg)
 	# wrap around environment for rsl-rl
 	env = RslRlVecEnvWrapper(env)
 
@@ -82,9 +84,10 @@ def main():
 	
 	# setup gamepad control
 	teleop_interface = Se2Gamepad(
-		v_x_sensitivity     = args_cli.lin_sensi/2,
-		v_y_sensitivity     = args_cli.lin_sensi,
-		omega_z_sensitivity = args_cli.rot_sensi
+		v_x_sensitivity     = args_cli.lin_sensi,
+		v_y_sensitivity     = args_cli.lin_sensi/2,
+		omega_z_sensitivity = args_cli.rot_sensi,
+		dead_zone = 0.05
 	)
 	teleop_interface.reset()
 	
@@ -94,18 +97,16 @@ def main():
 	cam_controller.update_view_location([0,-4,3],[0,2,0])
 	
 	# run environment
+	com = teleop_interface.advance() ; com[1] *= -1 ; com[2] *= -1;
+	env.unwrapped.command_manager._terms['base_velocity'].vel_command_b[0,:] = torch.tensor(com, device=env.unwrapped.device)
 	obs, _ = env.get_observations()
 	while simulation_app.is_running():
 		with torch.inference_mode():
-			
-			com = teleop_interface.advance()
-			com[1] *= -1;
-			com[2] *= -1;
-			obs[0,9:12] = torch.tensor(com, device=env.unwrapped.device)
-			
 			# agent stepping
 			actions = policy(obs)
 			# env stepping
+			com = teleop_interface.advance() ; com[1] *= -1 ; com[2] *= -1;
+			env.unwrapped.command_manager._terms['base_velocity'].vel_command_b[0,:] = torch.tensor(com, device=env.unwrapped.device)
 			obs, _, _, _ = env.step(actions)
 
 	# close the simulator
