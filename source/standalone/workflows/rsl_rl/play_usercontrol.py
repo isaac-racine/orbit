@@ -18,7 +18,6 @@ import cli_args	 # isort: skip
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL")
 parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline")
 parser.add_argument("--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations")
-parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--lin_sensi", type=float, default=2, help="Gamepad linear speed sensitivity")
 parser.add_argument("--rot_sensi", type=float, default=3.14/2, help="Gamepad rotational speed sensitivity")

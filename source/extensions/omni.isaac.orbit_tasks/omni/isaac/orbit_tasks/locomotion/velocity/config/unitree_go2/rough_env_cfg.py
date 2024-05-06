@@ -93,5 +93,5 @@ class UnitreeGo2RoughEnvCfg_PLAYCONTROL(UnitreeGo2RoughEnvCfg_PLAY):
         self.commands.base_velocity = mdp.UserVelocityCommandCfg(
 			asset_name="robot",
 			debug_vis=True,
-			resampling_time_range=(1000.0, 1000.0), # not used 
+			resampling_time_range=(10.0, 10.0), # not used 
 		)
