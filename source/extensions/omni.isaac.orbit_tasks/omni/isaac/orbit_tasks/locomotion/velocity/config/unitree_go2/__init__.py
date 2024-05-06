@@ -20,7 +20,6 @@ gym.register(
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2FlatPPORunnerCfg,
     },
 )
-
 gym.register(
     id="Isaac-Velocity-Flat-Unitree-Go2-Play-v0",
     entry_point="omni.isaac.orbit.envs:RLTaskEnv",
@@ -40,7 +39,6 @@ gym.register(
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
     },
 )
-
 gym.register(
     id="Isaac-Velocity-Rough-Unitree-Go2-Play-v0",
     entry_point="omni.isaac.orbit.envs:RLTaskEnv",
@@ -52,11 +50,20 @@ gym.register(
 )
 
 gym.register(
-    id="Isaac-Velocity-Rough-Unitree-Go2-Play-v1",
+    id="Isaac-Velocity-Custom-Unitree-Go2-v0",
     entry_point="omni.isaac.orbit.envs:RLTaskEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": rough_env_cfg.UnitreeGo2RoughEnvCfg_PLAYCONTROL,
+        "env_cfg_entry_point": rough_env_cfg.UnitreeGo2CustomEnvCfg,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
+    },
+)
+gym.register(
+    id="Isaac-Velocity-Custom-Unitree-Go2-Play-v0",
+    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": rough_env_cfg.UnitreeGo2CustomEnvCfg_PLAY,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
     },
 )

@@ -129,14 +129,11 @@ class OmniPatternCfg(PatternBaseCfg):
 
 	func: Callable = patterns.omni_pattern
 
-	horizontal_fov: float = 360.0
-	"""Horizontal field of view (in degrees). Defaults to 360.0."""
-	
-	vertical_fov: float = 90.0
-	"""Vertical field of view (in degrees). Defaults to 90.0."""
-	
+	vertical_start: float = -80.0
+	vertical_end: float = 0.0
+	vertical_res: float = 2.0
+
+	horizontal_start: float = -90.0
+	horizontal_end: float = 90.0
 	horizontal_res: float = 10.0
-	"""Horizontal resolution (in degrees). Defaults to 10.0."""
 	
-	vertical_res: float = 10.0
-	"""Vertical resolution (in degrees). Defaults to 10.0."""

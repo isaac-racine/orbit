@@ -46,7 +46,7 @@ from omni.isaac.orbit_tasks.utils import get_checkpoint_path, parse_env_cfg
 from omni.isaac.orbit_tasks.utils.wrappers.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_onnx
 
 
-TASK = "Isaac-Velocity-Rough-Unitree-Go2-Play-v1"
+TASK = "Isaac-Velocity-Custom-Unitree-Go2-Play-v0"
 NBENVS = 1
 
 def main():

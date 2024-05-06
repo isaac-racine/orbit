@@ -139,12 +139,11 @@ def omni_pattern(cfg: patterns_cfg.OmniPatternCfg, device: str) -> tuple[torch.T
 	Returns:
 		The starting positions and directions of the rays.
 	"""
-	h = torch.arange(-cfg.horizontal_fov / 2, cfg.horizontal_fov / 2, cfg.horizontal_res, device=device)
-	v = torch.arange(-cfg.vertical_fov / 2, cfg.vertical_fov / 2, cfg.vertical_res, device=device)
+	h = torch.arange(cfg.horizontal_start, cfg.horizontal_end, cfg.horizontal_res, device=device)
+	v = torch.arange(cfg.vertical_start, cfg.vertical_end, cfg.vertical_res, device=device)
 	
 	pitch, yaw = torch.meshgrid(v, h, indexing="xy")
 	pitch, yaw = torch.deg2rad(pitch.reshape(-1)), torch.deg2rad(yaw.reshape(-1))
-	pitch += torch.pi / 2
 	x = torch.sin(pitch) * torch.cos(yaw)
 	y = torch.sin(pitch) * torch.sin(yaw)
 	z = torch.cos(pitch)
