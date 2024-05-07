@@ -17,7 +17,7 @@ from omni.isaac.orbit.managers import RewardTermCfg as RewTerm
 from omni.isaac.orbit.managers import SceneEntityCfg
 from omni.isaac.orbit.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.orbit.scene import InteractiveSceneCfg
-from omni.isaac.orbit.sensors import ContactSensorCfg, RayCasterCfg, patterns
+from omni.isaac.orbit.sensors import ContactSensorCfg, RayCasterCfg, patterns, CameraCfg
 from omni.isaac.orbit.terrains import TerrainImporterCfg
 from omni.isaac.orbit.utils import configclass
 from omni.isaac.orbit.utils.noise import AdditiveUniformNoiseCfg as Unoise
@@ -79,6 +79,33 @@ class MySceneCfg(InteractiveSceneCfg):
 		prim_path="/World/skyLight",
 		spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
 	)
+
+
+	# Camera (takes alot of processing power --> might need to reduce the numof envs for training) 
+
+	#Pinhole camera type
+	# camera_front = CameraCfg(
+	# 	prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
+	# 	update_period=0.1,
+	# 	height=480,
+	# 	width=640,
+	# 	data_types=["rgb", "distance_to_image_plane"],
+	# 	spawn=sim_utils.PinholeCameraCfg(
+	# 		focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+	# 	),
+	# 	offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),	#To modify for real offset on Go2
+	# )
+
+	# The fisheye camera type (is not recognised and the sim is defaulting to a pinhole camera type)
+	# camera_360 = CameraCfg(
+	# 	prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
+	# 	update_period=0.1,
+	# 	height=480,
+	# 	width=640,
+	# 	data_types=["rgb", "distance_to_image_plane"],
+	# 	spawn=sim_utils.FisheyeCameraCfg(),
+	# 	offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),	#To modify for real offset on Go2
+	# )
 
 
 ##

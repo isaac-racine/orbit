@@ -1,0 +1,15 @@
+This folder is to save trained models. 
+
+
+Remane the newly trained model folder to something descriptive when you add it to this folder. Then put the name and a more 
+complete description of the trained model in this README.
+
+Example : 
+
+Model folder name: Default_Model.pt
+Description: This model was trained for the Go2 rough terrain with the default parameters of orbit.
+    Workflow used : rsl_sl
+    number of iteration = 1500
+
+
+

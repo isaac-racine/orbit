@@ -21,6 +21,9 @@ parser.add_argument("--disable_fabric", action="store_true", default=False, help
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--lin_sensi", type=float, default=2, help="Gamepad linear speed sensitivity")
 parser.add_argument("--rot_sensi", type=float, default=3.14/2, help="Gamepad rotational speed sensitivity")
+parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to simulate.")
+parser.add_argument("--task", type=str, default="Isaac-Velocity-Rough-Unitree-Go2-Play-v1", help="Name of the task.")
+parser.add_argument("--device", choices=["gamepad","keyboard"], default="gamepad", help="Choose from options: gamepad, keyboard")
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -37,7 +40,7 @@ import gymnasium as gym
 import os
 import torch
 
-from omni.isaac.orbit.devices import Se2Gamepad
+from omni.isaac.orbit.devices import Se2Gamepad, Se2Keyboard
 from omni.isaac.orbit.envs.ui import ViewportCameraController
 from omni.isaac.orbit.envs import ViewerCfg
 from rsl_rl.runners import OnPolicyRunner
@@ -53,12 +56,12 @@ def main():
 	"""Play with RSL-RL agent."""
 	# parse configuration
 	env_cfg = parse_env_cfg(
-		TASK, use_gpu=not args_cli.cpu, num_envs=NBENVS, use_fabric=not args_cli.disable_fabric
+		args_cli.task, use_gpu=not args_cli.cpu, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
 	)
-	agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(TASK, args_cli)
+	agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
 	# create isaac environment
-	env = gym.make(TASK, cfg=env_cfg)
+	env = gym.make(args_cli.task, cfg=env_cfg)
 	# wrap around environment for rsl-rl
 	env = RslRlVecEnvWrapper(env)
 
@@ -81,13 +84,22 @@ def main():
 	export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
 	export_policy_as_onnx(ppo_runner.alg.actor_critic, export_model_dir, filename="policy.onnx")
 	
-	# setup gamepad control
-	teleop_interface = Se2Gamepad(
-		v_x_sensitivity     = args_cli.lin_sensi,
-		v_y_sensitivity     = args_cli.lin_sensi/2,
-		omega_z_sensitivity = args_cli.rot_sensi,
-		dead_zone = 0.05
-	)
+	# setup device control (gamepad, keyboard)
+	
+	if args_cli.device == "gamepad":
+		teleop_interface = Se2Gamepad(
+			v_x_sensitivity     = args_cli.lin_sensi,
+			v_y_sensitivity     = args_cli.lin_sensi/2,
+			omega_z_sensitivity = args_cli.rot_sensi,
+			dead_zone = 0.05
+		)	
+	elif args_cli.device == "keyboard":
+		teleop_interface = Se2Keyboard(
+			#v_x_sensitivity     = args_cli.lin_sensi,
+			#v_y_sensitivity     = args_cli.lin_sensi/2,
+			#omega_z_sensitivity = args_cli.rot_sensi,
+		)
+	
 	teleop_interface.reset()
 	
 	# setup camera
