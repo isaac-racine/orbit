@@ -87,7 +87,11 @@ class MySceneCfg(InteractiveSceneCfg):
 		prim_path="/World/skyLight",
 		spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
 	)
-	# Camera
+
+
+	# Camera (takes alot of processing power --> might need to reduce the numof envs for training) 
+
+	#Pinhole camera type
 	# camera_front = CameraCfg(
 	# 	prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
 	# 	update_period=0.1,
@@ -100,15 +104,17 @@ class MySceneCfg(InteractiveSceneCfg):
 	# 	offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),	#To modify for real offset on Go2
 	# )
 
-	camera_360 = CameraCfg(
-		prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
-		update_period=0.1,
-		height=480,
-		width=640,
-		data_types=["rgb", "distance_to_image_plane"],
-		spawn=sim_utils.FisheyeCameraCfg(),
-		offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),	#To modify for real offset on Go2
-	)
+	# The fisheye camera type (is not recognised and the sim is defaulting to a pinhole camera type)
+	# camera_360 = CameraCfg(
+	# 	prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
+	# 	update_period=0.1,
+	# 	height=480,
+	# 	width=640,
+	# 	data_types=["rgb", "distance_to_image_plane"],
+	# 	spawn=sim_utils.FisheyeCameraCfg(),
+	# 	offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),	#To modify for real offset on Go2
+	# )
+
 
 ##
 # MDP settings
