@@ -12,6 +12,7 @@ from omni.isaac.orbit.utils import configclass
 from .null_command import NullCommand
 from .pose_2d_command import TerrainBasedPose2dCommand, UniformPose2dCommand
 from .pose_command import UniformPoseCommand
+from .scalar_command import UniformSpeedCommand
 from .velocity_command import NormalVelocityCommand, UniformVelocityCommand, UserVelocityCommand
 
 
@@ -25,6 +26,19 @@ class NullCommandCfg(CommandTermCfg):
 		"""Post initialization."""
 		# set the resampling time range to infinity to avoid resampling
 		self.resampling_time_range = (math.inf, math.inf)
+
+
+@configclass
+class UniformSpeedCommandCfg(CommandTermCfg):
+	"""Configuration for the uniform speed commands generator."""
+
+	class_type: type = UniformSpeedCommand
+
+	asset_name: str = MISSING
+	"""Name of the asset in the environment for which the commands are generated."""
+	
+	range_speed: tuple[float, float] = MISSING
+	"""Distribution ranges for the speed commands."""
 
 
 @configclass
@@ -63,16 +77,6 @@ class UniformVelocityCommandCfg(CommandTermCfg):
 	"""Distribution ranges for the velocity commands."""
 
 @configclass
-class UserVelocityCommandCfg(CommandTermCfg):
-	"""Configuration for the user controlled velocity command generator."""
-
-	class_type: type = UserVelocityCommand
-
-	asset_name: str = MISSING
-	"""Name of the asset in the environment for which the commands are generated."""
-
-
-@configclass
 class NormalVelocityCommandCfg(UniformVelocityCommandCfg):
 	"""Configuration for the normal velocity command generator."""
 
@@ -101,6 +105,20 @@ class NormalVelocityCommandCfg(UniformVelocityCommandCfg):
 
 	ranges: Ranges = MISSING
 	"""Distribution ranges for the velocity commands."""
+
+@configclass
+class UserVelocityCommandCfg(CommandTermCfg):
+	"""Configuration for the user controlled velocity command generator."""
+
+	class_type: type = UserVelocityCommand
+
+	asset_name: str = MISSING
+	"""Name of the asset in the environment for which the commands are generated."""
+	
+	def __post_init__(self):
+		"""Post initialization."""
+		# set the resampling time range to infinity to avoid resampling
+		self.resampling_time_range = (math.inf, math.inf)
 
 
 @configclass
@@ -134,7 +152,6 @@ class UniformPoseCommandCfg(CommandTermCfg):
 	ranges: Ranges = MISSING
 	"""Ranges for the commands."""
 
-
 @configclass
 class UniformPose2dCommandCfg(CommandTermCfg):
 	"""Configuration for the uniform 2D-pose command generator."""
@@ -166,7 +183,6 @@ class UniformPose2dCommandCfg(CommandTermCfg):
 
 	ranges: Ranges = MISSING
 	"""Distribution ranges for the position commands."""
-
 
 @configclass
 class TerrainBasedPose2dCommandCfg(UniformPose2dCommandCfg):

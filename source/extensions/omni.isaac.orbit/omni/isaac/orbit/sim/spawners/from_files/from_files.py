@@ -57,7 +57,7 @@ def spawn_from_usd(
         FileNotFoundError: If the USD file does not exist at the given path.
     """
     # spawn asset from the given usd file
-    return _spawn_from_usd_file(prim_path, cfg.usd_path, cfg, translation, orientation)
+    return _spawn_from_usd_file(prim_path, cfg.usd_path, cfg, translation, orientation if orientation is not None else cfg.orientation)
 
 
 @clone
