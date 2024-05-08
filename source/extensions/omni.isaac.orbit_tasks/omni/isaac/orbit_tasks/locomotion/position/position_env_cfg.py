@@ -27,13 +27,14 @@ import omni.isaac.orbit_tasks.locomotion.position.mdp as mdp
 ##
 # Pre-defined configs
 ##
-from omni.isaac.orbit.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
+from omni.isaac.orbit.terrains.config.rough import CUSTOM_TERRAINS_CFG  # isort: skip
 
 
 ##
 # Scene definition
 ##
 
+DEBUG_VIS=True
 
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
@@ -44,6 +45,7 @@ class MySceneCfg(InteractiveSceneCfg):
 		prim_path="/World/ground",
 		terrain_type="generator",
 		collision_group=-1,
+		max_init_terrain_level=0,
 		physics_material=sim_utils.RigidBodyMaterialCfg(
 			friction_combine_mode="multiply",
 			restitution_combine_mode="multiply",
@@ -54,19 +56,8 @@ class MySceneCfg(InteractiveSceneCfg):
 			mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
 			project_uvw=True,
 		),
-		debug_vis=True,
-		terrain_generator=TerrainGeneratorCfg(
-			curriculum=True,
-			size=(6,6),
-			num_rows=3, # corresponds to difficulty levels
-			num_cols=1,
-			color_scheme='random',
-			sub_terrains=[
-				MeshPlaneTerrainCfg(                flat_patch_sampling={'target': FlatPatchSamplingCfg(num_patches=5)}),
-				MeshRandomGridTerrainCfg(           flat_patch_sampling={'target': FlatPatchSamplingCfg(num_patches=5)}),
-				MeshInvertedPyramidStairsTerrainCfg(flat_patch_sampling={'target': FlatPatchSamplingCfg(num_patches=5)}),
-			)
-		),
+		debug_vis=DEBUG_VIS,
+		terrain_generator=CUSTOM_TERRAINS_CFG
 	)
 	
 	# robots
@@ -77,7 +68,7 @@ class MySceneCfg(InteractiveSceneCfg):
 		offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
 		attach_yaw_only=True,
 		pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-		debug_vis=False,
+		debug_vis=DEBUG_VIS,
 		mesh_prim_paths=["/World/ground"],
 	)
 	contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
@@ -105,14 +96,14 @@ class CommandsCfg:
 		asset_name="robot",
 		resampling_time_range=(10.0, 10.0),
 		simple_heading=True,
-		debug_vis=True,
+		debug_vis=DEBUG_VIS,
 	)
 	
 	base_speed = mdp.UniformSpeedCommandCfg(
 		asset_name="robot",
 		resampling_time_range=(0.0, 4.0),
 		range_speed=(0.0, 4.0),
-		debug_vis=True,
+		debug_vis=DEBUG_VIS,
 	) 
 
 
@@ -252,7 +243,6 @@ class RewardsCfg:
 		weight=0.125,
 		params={
 			"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
-			"command_name": "base_velocity",
 			"threshold": 0.5,
 		},
 	)
@@ -281,7 +271,7 @@ class TerminationsCfg:
 class CurriculumCfg:
 	"""Curriculum terms for the MDP."""
 
-	terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+	terrain_levels = CurrTerm(func=mdp.terrain_levels_pos)
 
 
 ##

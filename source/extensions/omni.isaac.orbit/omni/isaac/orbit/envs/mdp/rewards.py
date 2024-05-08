@@ -330,5 +330,5 @@ def track_speedxy_exp(
 	# extract the used quantities (to enable type-hinting)
 	asset: RigidObject = env.scene[asset_cfg.name]
 	# compute the error
-	speed_error = torch.square(env.command_manager.get_command(command_name) - torch.norm(asset.data.root_lin_vel_b[:, :2]))
+	speed_error = torch.square(env.command_manager.get_command(command_name)[:,0] - torch.norm(asset.data.root_lin_vel_b[:, :2]))
 	return torch.exp(-speed_error / std**2)

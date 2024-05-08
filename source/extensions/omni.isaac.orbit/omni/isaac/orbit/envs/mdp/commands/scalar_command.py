@@ -60,7 +60,7 @@ class UniformSpeedCommand(CommandTerm):
 
 		# crete buffers to store the command
 		# -- command: value
-		self.speed_command_b = torch.zeros(self.num_envs, device=self.device)
+		self.speed_command_b = torch.zeros(self.num_envs,1, device=self.device)
 		# -- metrics
 		self.metrics["error_speed"] = torch.zeros(self.num_envs, device=self.device)
 
@@ -90,14 +90,14 @@ class UniformSpeedCommand(CommandTerm):
 		max_command_step = max_command_time / self._env.step_dt
 		# logs data
 		self.metrics["error_speed"] += (
-			torch.abs(self.speed_command_b - torch.norm(self.robot.data.root_lin_vel_b[:, :2], dim=-1)) / max_command_step
+			torch.abs(self.speed_command_b[:,0] - torch.norm(self.robot.data.root_lin_vel_b[:, :2], dim=-1)) / max_command_step
 		)
 
 	def _resample_command(self, env_ids: Sequence[int]):
 		# sample velocity commands
 		r = torch.empty(len(env_ids), device=self.device)
 		# -- speed
-		self.speed_command_b[env_ids] = r.uniform_(*self.cfg.range_speed)
+		self.speed_command_b[env_ids,0] = r.uniform_(*self.cfg.range_speed)
 
 	def _update_command(self):
 		pass
@@ -137,10 +137,10 @@ class UniformSpeedCommand(CommandTerm):
 		speed_arrow_pos[:,0] -= 0.5
 		# -- resolve the scales
 		base_scale = self.base_speed_goal_visualizer.cfg.markers["arrow"].scale
-		speed_des_arrow_scale = base_scale.clone()
-		speed_des_arrow_scale[:,0] *= self.command
-		speed_arrow_scale = base_scale.clone()
-		speed_arrow_scale[:,0] *= torch.norm(self.robot.data.root_lin_vel_b[:, :2], dim=-1)
+		speed_des_arrow_scale = torch.tensor(base_scale, device=self.device).repeat(self.command.shape[0], 1)
+		speed_des_arrow_scale[:,2] *= self.command[:,0]
+		speed_arrow_scale = torch.tensor(base_scale, device=self.device).repeat(self.command.shape[0], 1)
+		speed_arrow_scale[:,2] *= torch.norm(self.robot.data.root_lin_vel_b[:, :2], dim=-1)
 		# display markers
-		self.base_vel_goal_visualizer.visualize(speed_des_arrow_pos, None, speed_des_arrow_scale)
-		self.base_vel_visualizer.visualize(speed_arrow_pos, None, speed_arrow_scale)
+		self.base_speed_goal_visualizer.visualize(speed_des_arrow_pos, None, speed_des_arrow_scale)
+		self.base_speed_visualizer.visualize(speed_arrow_pos, None, speed_arrow_scale)

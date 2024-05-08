@@ -8,9 +8,6 @@ from omni.isaac.orbit.utils import configclass
 from omni.isaac.orbit_tasks.locomotion.velocity.velocity_env_cfg import LocomotionVelocityRoughEnvCfg
 import omni.isaac.orbit_tasks.locomotion.velocity.mdp as mdp
 
-from omni.isaac.orbit.sensors.ray_caster.ray_caster_cfg import RayCasterCfg
-from omni.isaac.orbit.sensors.ray_caster.patterns.patterns_cfg import OmniPatternCfg
-
 ##
 # Pre-defined configs
 ##
@@ -87,48 +84,3 @@ class UnitreeGo2RoughEnvCfg_PLAY(UnitreeGo2RoughEnvCfg):
 		self.events.push_robot = None
 
 
-@configclass
-class UnitreeGo2CustomEnvCfg(UnitreeGo2RoughEnvCfg):
-	def __post_init__(self):
-		# post init of parent
-		super().__post_init__()
-		
-		# modify scanner
-		self.scene.height_scanner = RayCasterCfg(
-			prim_path="{ENV_REGEX_NS}/Robot/base",
-			offset=RayCasterCfg.OffsetCfg(pos=(0.28945, 0.0, -0.04682)),
-			pattern_cfg=OmniPatternCfg(),
-			max_distance = 30,
-			debug_vis=True,
-			mesh_prim_paths=["/World/ground"],
-			update_period=0
-		)
-
-@configclass
-class UnitreeGo2CustomEnvCfg_PLAY(UnitreeGo2CustomEnvCfg):
-	def __post_init__(self):
-		# post init of parent
-		super().__post_init__()
-		
-		# receive commands from user
-		self.commands.base_velocity = mdp.UserVelocityCommandCfg(
-			asset_name="robot",
-			debug_vis=True,
-		)
-		
-		# make a smaller scene for play
-		self.scene.num_envs = 1
-		self.scene.env_spacing = 2.5
-		# spawn the robot randomly in the grid (instead of their terrain levels)
-		self.scene.terrain.max_init_terrain_level = None
-		# reduce the number of terrains to save memory
-		if self.scene.terrain.terrain_generator is not None:
-			self.scene.terrain.terrain_generator.num_rows = 5
-			self.scene.terrain.terrain_generator.num_cols = 5
-			self.scene.terrain.terrain_generator.curriculum = False
-		
-		# disable randomization for play
-		self.observations.policy.enable_corruption = False
-		# remove random pushing event
-		self.events.base_external_force_torque = None
-		self.events.push_robot = None

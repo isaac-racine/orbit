@@ -88,12 +88,13 @@ GREEN_ARROW_X_MARKER_CFG = VisualizationMarkersCfg(
 )
 """Configuration for the green arrow marker (along x-direction)."""
 
+Z_ROT = [0.707, 0.0, 0.0, -0.707]
 BLUE_ARROW_Z_MARKER_CFG = VisualizationMarkersCfg(
     markers={
         "arrow": sim_utils.UsdFileCfg(
             usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/UIElements/arrow_x.usd",
             scale=(1.0, 0.1, 0.1),
-			orientation=(0.0, 0.0, 1.0, 0.0),
+			orientation=Z_ROT,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0)),
         )
     }
@@ -103,7 +104,7 @@ RED_ARROW_Z_MARKER_CFG = VisualizationMarkersCfg(
         "arrow": sim_utils.UsdFileCfg(
             usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/UIElements/arrow_x.usd",
             scale=(1.0, 0.1, 0.1),
-			orientation=(0.0, 0.0, 1.0, 0.0),
+			orientation=Z_ROT,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)),
         )
     }
@@ -113,7 +114,7 @@ GREEN_ARROW_Z_MARKER_CFG = VisualizationMarkersCfg(
         "arrow": sim_utils.UsdFileCfg(
             usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/UIElements/arrow_x.usd",
             scale=(1.0, 0.1, 0.1),
-			orientation=(0.0, 0.0, 1.0, 0.0),
+			orientation=Z_ROT,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),
         )
     }

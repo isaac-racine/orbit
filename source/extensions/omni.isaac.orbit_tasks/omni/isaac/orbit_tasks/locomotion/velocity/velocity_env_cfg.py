@@ -36,7 +36,7 @@ from omni.isaac.orbit.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: 
 
 
 @configclass
-class MySceneCfg(InteractiveSceneCfg):
+class VelSceneCfg(InteractiveSceneCfg):
 	"""Configuration for the terrain scene with a legged robot."""
 
 	# ground terrain
@@ -58,6 +58,7 @@ class MySceneCfg(InteractiveSceneCfg):
 		),
 		debug_vis=False,
 	)
+	
 	# robots
 	robot: ArticulationCfg = MISSING
 	# sensors
@@ -79,34 +80,6 @@ class MySceneCfg(InteractiveSceneCfg):
 		prim_path="/World/skyLight",
 		spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
 	)
-
-
-	# Camera (takes alot of processing power --> might need to reduce the numof envs for training) 
-
-	#Pinhole camera type
-	# camera_front = CameraCfg(
-	# 	prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
-	# 	update_period=0.1,
-	# 	height=480,
-	# 	width=640,
-	# 	data_types=["rgb", "distance_to_image_plane"],
-	# 	spawn=sim_utils.PinholeCameraCfg(
-	# 		focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
-	# 	),
-	# 	offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),	#To modify for real offset on Go2
-	# )
-
-	# The fisheye camera type (is not recognised and the sim is defaulting to a pinhole camera type)
-	# camera_360 = CameraCfg(
-	# 	prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
-	# 	update_period=0.1,
-	# 	height=480,
-	# 	width=640,
-	# 	data_types=["rgb", "distance_to_image_plane"],
-	# 	spawn=sim_utils.FisheyeCameraCfg(),
-	# 	offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),	#To modify for real offset on Go2
-	# )
-
 
 ##
 # MDP settings
@@ -304,7 +277,7 @@ class LocomotionVelocityRoughEnvCfg(RLTaskEnvCfg):
 	"""Configuration for the locomotion velocity-tracking environment."""
 
 	# Scene settings
-	scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=2.5)
+	scene: VelSceneCfg = VelSceneCfg(num_envs=4096, env_spacing=2.5)
 	# Basic settings
 	observations: ObservationsCfg = ObservationsCfg()
 	actions: ActionsCfg = ActionsCfg()

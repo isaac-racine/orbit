@@ -18,6 +18,7 @@ import omni.isaac.orbit.utils.math as math_utils
 from omni.isaac.orbit.assets import Articulation, RigidObject
 from omni.isaac.orbit.managers import SceneEntityCfg
 from omni.isaac.orbit.sensors import RayCaster
+from omni.isaac.orbit.sensors.contact_sensor import ContactSensor
 
 if TYPE_CHECKING:
     from omni.isaac.orbit.envs import BaseEnv, RLTaskEnv
@@ -167,6 +168,9 @@ def height_scan(env: BaseEnv, sensor_cfg: SceneEntityCfg, offset: float = 0.5) -
     # height scan: height = sensor_height - hit_point_z - offset
     return sensor.data.pos_w[:, 2].unsqueeze(1) - sensor.data.ray_hits_w[..., 2] - offset
 
+def received_forces(env: BaseEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	return torch.norm(sensor.data.net_forces_w[:,sensor_cfg.body_ids], dim=2)
 
 def body_incoming_wrench(env: BaseEnv, asset_cfg: SceneEntityCfg) -> torch.Tensor:
     """Incoming spatial wrench on bodies of an articulation in the simulation world frame.
