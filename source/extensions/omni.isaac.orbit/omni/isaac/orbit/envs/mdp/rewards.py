@@ -79,6 +79,13 @@ def lin_vel_z_l2(env: RLTaskEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("rob
 	asset: RigidObject = env.scene[asset_cfg.name]
 	return torch.square(asset.data.root_lin_vel_b[:, 2])
 
+def lin_vel_z_exp(env: RLTaskEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Reward z-axis base linear velocity minimization using exponential kernel."""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	# compute the error
+	lin_vel = torch.square(asset.data.root_lin_vel_b[:, 2])
+	return torch.exp(-lin_vel / std**2)
 
 def ang_vel_xy_l2(env: RLTaskEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	"""Penalize xy-axis base angular velocity using L2-kernel."""
@@ -86,6 +93,13 @@ def ang_vel_xy_l2(env: RLTaskEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("ro
 	asset: RigidObject = env.scene[asset_cfg.name]
 	return torch.sum(torch.square(asset.data.root_ang_vel_b[:, :2]), dim=1)
 
+def ang_vel_xy_exp(env: RLTaskEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Reward xy-axis base angular velocity minimization using exponential kernel."""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	# compute the error
+	ang_vel = torch.sum(torch.square(asset.data.root_ang_vel_b[:, :2]), dim=1)
+	return torch.exp(-ang_vel / std**2)
 
 def flat_orientation_l2(env: RLTaskEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	"""Penalize non-flat base orientation using L2-kernel.
@@ -96,6 +110,13 @@ def flat_orientation_l2(env: RLTaskEnv, asset_cfg: SceneEntityCfg = SceneEntityC
 	asset: RigidObject = env.scene[asset_cfg.name]
 	return torch.sum(torch.square(asset.data.projected_gravity_b[:, :2]), dim=1)
 
+def zero_quat_exp(env: RLTaskEnv, std: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Reward orientation minimization using exponential kernel.
+	"""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	orient_err = torch.sum(torch.square(asset.data.root_quat_w[:, 1:]), dim=1)
+	return torch.exp(-orient_err / std**2)
 
 def base_height_l2(
 	env: RLTaskEnv, target_height: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
@@ -245,6 +266,12 @@ def action_l2(env: RLTaskEnv) -> torch.Tensor:
 Contact sensor.
 """
 
+
+def prolonged_contact(env: RLTaskEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	"""Penalize prolonged contacts as the time in contact."""
+	# extract the used quantities (to enable type-hinting)
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	return torch.sum(contact_sensor.data.current_contact_time, dim=1)
 
 def undesired_contacts(env: RLTaskEnv, threshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
 	"""Penalize undesired contacts as the number of violations that are above a threshold."""

@@ -32,6 +32,9 @@ from omni.isaac.orbit.terrains.config.rough import CUSTOM_TERRAINS_CFG  # isort:
 
 
 EPISODE_LENGTH=20.0
+DEBUG_VIS=False
+ILLEGAL_CONTACT_BODIES=["base",".*_hip","Head_.*"]
+UNWANTED_CONTACT_BODIES=[".*_thigh",".*_calf"]
 
 
 ##
@@ -61,7 +64,7 @@ class VelSceneCfg(InteractiveSceneCfg):
 			mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
 			project_uvw=True,
 		),
-		debug_vis=True,
+		debug_vis=DEBUG_VIS,
 		terrain_generator=CUSTOM_TERRAINS_CFG
 	)
 	
@@ -74,7 +77,7 @@ class VelSceneCfg(InteractiveSceneCfg):
 		offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
 		attach_yaw_only=True,
 		pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-		debug_vis=False,
+		debug_vis=DEBUG_VIS,
 		mesh_prim_paths=["/World/ground"],
 	)
 	contact_sensor = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=0, track_air_time=True)
@@ -132,7 +135,7 @@ class CommandsCfg:
 		rel_heading_envs=1.0,
 		heading_command=True,
 		heading_control_stiffness=0.5,
-		debug_vis=True,
+		debug_vis=DEBUG_VIS,
 		ranges=mdp.UniformVelocityCommandCfg.Ranges(
 			lin_vel_x=(-2.0, 2.0), lin_vel_y=(-2.0, 2.0), ang_vel_z=(-math.pi, math.pi), heading=(-math.pi, math.pi)
 		),
@@ -142,8 +145,7 @@ class CommandsCfg:
 @configclass
 class ActionsCfg:
 	"""Action specifications for the MDP."""
-
-	joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25, use_default_offset=True)
+	joint_force = mdp.JointEffortActionCfg(asset_name="robot", joint_names=[".*"])
 
 
 @configclass
@@ -160,14 +162,14 @@ class ObservationsCfg:
 		actions = ObservationTermCfg(func=mdp.last_action)
 		
 		base_lin_vel = ObservationTermCfg(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-		base_ang_vel = ObservationTermCfg(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+		base_ang_vel = ObservationTermCfg(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
 		root_quat_w = ObservationTermCfg(func=mdp.root_quat_w, noise=Unoise(n_min=-0.05, n_max=0.05))
 		joint_pos = ObservationTermCfg(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-		joint_vel = ObservationTermCfg(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+		joint_vel = ObservationTermCfg(func=mdp.joint_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
 		feet_forces = ObservationTermCfg(
 			func=mdp.received_forces,
 			params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=".*_foot")},
-			noise=Unoise(n_min=-0.1, n_max=0.1)
+			noise=Unoise(n_min=-1, n_max=1)
 		)
 		
 		#height_scan = ObservationTermCfg(
@@ -218,7 +220,7 @@ class EventCfg:
 		func=mdp.reset_root_state_uniform,
 		mode="reset",
 		params={
-			"pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+			"pose_range": {"x": (-2.0, 2.0), "y": (-2.0, 2.0), "yaw": (-3.14, 3.14)}, # high range for xy prevents https://forums.developer.nvidia.com/t/issue-with-environment-spacing-and-pxgdynamicsmemoryconfig-foundlostaggregatepairscapacity/198272/9
 			"velocity_range": {
 				"x": (-0.5, 0.5),
 				"y": (-0.5, 0.5),
@@ -249,36 +251,19 @@ class EventCfg:
 class RewardsCfg:
 	"""Reward terms for the MDP."""
 
-	# -- task
-	track_lin_vel_xy_exp = RewardTermCfg(
-		func=mdp.track_lin_vel_xy_exp, weight=2.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
-	)
-	track_ang_vel_z_exp = RewardTermCfg(
-		func=mdp.track_ang_vel_z_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
-	)
-	# -- steering
-	lin_vel_z_l2 = RewardTermCfg(func=mdp.lin_vel_z_l2, weight=-2.0)
-	ang_vel_xy_l2 = RewardTermCfg(func=mdp.ang_vel_xy_l2, weight=-0.05)
-	dof_torques_l2 = RewardTermCfg(func=mdp.joint_torques_l2, weight=-1.0e-5)
-	dof_acc_l2 = RewardTermCfg(func=mdp.joint_acc_l2, weight=-2.5e-7)
-	action_rate_l2 = RewardTermCfg(func=mdp.action_rate_l2, weight=-0.01)
-	feet_air_time = RewardTermCfg(
-		func=mdp.feet_air_time,
-		weight=0.125,
-		params={
-			"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=".*_foot"),
-			"command_name": "base_velocity",
-			"threshold": 0.5,
-		},
-	)
-	undesired_contacts = RewardTermCfg(
-		func=mdp.undesired_contacts,
-		weight=-1.0,
-		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=".*_thigh"), "threshold": 1.0},
-	)
-	flat_orientation_l2 = RewardTermCfg(func=mdp.flat_orientation_l2, weight=-2.0)
-	dof_pos_limits = RewardTermCfg(func=mdp.joint_pos_limits, weight=-2.0)
-
+	# task
+	track_lin_vel_xy_exp = RewardTermCfg(func=mdp.track_lin_vel_xy_exp, weight=100.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	track_ang_vel_z_exp = RewardTermCfg(func=mdp.track_ang_vel_z_exp, weight=50.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	
+	# steering
+	#lin_vel_z_exp = RewardTermCfg(func=mdp.lin_vel_z_exp, weight=0.5/100, params={"std": math.sqrt(0.25)})
+	#ang_vel_xy_exp = RewardTermCfg(func=mdp.ang_vel_xy_exp, weight=1.0/100, params={"std": math.sqrt(0.25)})
+	#zero_quat_exp = RewardTermCfg(func=mdp.zero_quat_exp, weight=1.0/100, params={"std": math.sqrt(0.25)})
+	
+	# contact penalties
+	prolonged_contact = RewardTermCfg(func=mdp.prolonged_contact, weight=-10.0, params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES)}) # prevent the robot from sitting down on its legs
+	action_rate_l2 = RewardTermCfg(func=mdp.action_rate_l2, weight=-0.0001)
+	joint_acc_l2 = RewardTermCfg(func=mdp.joint_acc_l2, weight=-0.00001)
 
 @configclass
 class TerminationsCfg:
@@ -287,7 +272,7 @@ class TerminationsCfg:
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
 	base_contact = TerminationTermCfg(
 		func=mdp.illegal_contact,
-		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names="base"), "threshold": 1.0},
+		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 0.5}, # prevent the robot from sitting down among other things
 	)
 
 
@@ -304,11 +289,11 @@ class CurriculumCfg:
 
 
 @configclass
-class LocomotionVelocityCustomEnvCfg(RLTaskEnvCfg):
+class UnitreeGo2VelCustomEnvCfg(RLTaskEnvCfg):
 	"""Configuration for the locomotion velocity-tracking environment."""
 
 	# Scene settings
-	scene: VelSceneCfg = VelSceneCfg(num_envs=4096, env_spacing=0.0)
+	scene: VelSceneCfg = VelSceneCfg(num_envs=4096, env_spacing=0.0).replace(height_scanner=None)
 	# Basic settings
 	observations: ObservationsCfg = ObservationsCfg()
 	actions: ActionsCfg = ActionsCfg()
@@ -318,7 +303,7 @@ class LocomotionVelocityCustomEnvCfg(RLTaskEnvCfg):
 	terminations: TerminationsCfg = TerminationsCfg()
 	events: EventCfg = EventCfg()
 	curriculum: CurriculumCfg = CurriculumCfg()
-
+	
 	def __post_init__(self):
 		"""Post initialization."""
 		# general settings
@@ -328,6 +313,7 @@ class LocomotionVelocityCustomEnvCfg(RLTaskEnvCfg):
 		self.sim.dt = 0.005
 		self.sim.disable_contact_processing = True
 		self.sim.physics_material = self.scene.terrain.physics_material
+		#self.sim.physx.gpu_found_lost_pairs_capacity = 5_000_000
 		
 		# update sensor update periods
 		# we tick all the sensors based on the smallest update period (physics update period)
