@@ -51,6 +51,30 @@ class MeshPyramidStairsTerrainCfg(SubTerrainBaseCfg):
 
 
 @configclass
+class MeshPyramidSlopeTerrainCfg(SubTerrainBaseCfg):
+    """Configuration for a pyramid stair mesh terrain."""
+
+    function = mesh_terrains.pyramid_slope_terrain
+
+    border_width: float = 0.0
+    """The width of the border around the terrain (in m). Defaults to 0.0.
+
+    The border is a flat terrain with the same height as the terrain.
+    """
+    slope_angle_range: tuple[float, float] = MISSING
+    """The minimum and maximum slope angle (in radians)."""
+    platform_width: float = 1.0
+    """The width of the square platform at the center of the terrain. Defaults to 1.0."""
+    holes: bool = False
+    """If True, the terrain will have holes between slopes. Defaults to False."""
+
+
+@configclass
+class MeshInvertedPyramidSlopeTerrainCfg(MeshPyramidSlopeTerrainCfg):
+	function = mesh_terrains.inverted_pyramid_slope_terrain
+
+
+@configclass
 class MeshInvertedPyramidStairsTerrainCfg(MeshPyramidStairsTerrainCfg):
     """Configuration for an inverted pyramid stair mesh terrain.
 

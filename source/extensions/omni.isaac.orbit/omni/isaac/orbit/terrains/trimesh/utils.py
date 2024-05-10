@@ -6,6 +6,7 @@
 import numpy as np
 import scipy.spatial.transform as tf
 import trimesh
+from trimesh import transformations as T
 
 """
 Primitive functions to generate meshes.
@@ -44,6 +45,10 @@ def make_plane(size: tuple[float, float], height: float, center_zero: bool = Tru
     # return the tri-mesh and the position
     return plane_mesh
 
+def make_slope(angle: float, axis: tuple[float, float, float], size: tuple[float, float]) -> trimesh.Trimesh:
+	plane_mesh = make_plane(size, 0, True)
+	plane_mesh.apply_transform(T.rotation_matrix(angle, axis))
+	return plane_mesh
 
 def make_border(
     size: tuple[float, float], inner_size: tuple[float, float], height: float, position: tuple[float, float, float]

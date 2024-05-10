@@ -28,7 +28,7 @@ import omni.isaac.orbit_tasks.locomotion.velocity.mdp as mdp
 # Pre-defined configs
 ##
 from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
-from omni.isaac.orbit.terrains.config.rough import CUSTOM_TERRAINS_CFG  # isort: skip
+from omni.isaac.orbit.terrains.config.rough import VEL_CUSTOM_TERRAIN_CFG, POS_CUSTOM_TERRAIN_CFG  # isort: skip
 
 
 EPISODE_LENGTH=20.0
@@ -52,8 +52,8 @@ class VelSceneCfg(InteractiveSceneCfg):
 		terrain_type="generator",
 		collision_group=-1,
 		max_init_terrain_level=0,
-		init_terrain_row=0,
-		linear_progression=True,
+		#init_terrain_row=0,
+		#linear_progression=True,
 		physics_material=sim_utils.RigidBodyMaterialCfg(
 			friction_combine_mode="multiply",
 			restitution_combine_mode="multiply",
@@ -65,7 +65,7 @@ class VelSceneCfg(InteractiveSceneCfg):
 			project_uvw=True,
 		),
 		debug_vis=DEBUG_VIS,
-		terrain_generator=CUSTOM_TERRAINS_CFG
+		terrain_generator=VEL_CUSTOM_TERRAIN_CFG
 	)
 	
 	# robots
@@ -130,14 +130,14 @@ class CommandsCfg:
 
 	base_velocity = mdp.UniformVelocityCommandCfg(
 		asset_name="robot",
-		resampling_time_range=(4.0,EPISODE_LENGTH-4.0),
-		rel_standing_envs=0.02,
-		rel_heading_envs=1.0,
+		resampling_time_range=(math.inf ,math.inf),
+		rel_standing_envs=0.0,
+		rel_heading_envs=0.0,
 		heading_command=True,
 		heading_control_stiffness=0.5,
 		debug_vis=DEBUG_VIS,
 		ranges=mdp.UniformVelocityCommandCfg.Ranges(
-			lin_vel_x=(-2.0, 2.0), lin_vel_y=(-2.0, 2.0), ang_vel_z=(-math.pi, math.pi), heading=(-math.pi, math.pi)
+			lin_vel_x=(-1.0, 1.0), lin_vel_y=(-1.0, 1.0), ang_vel_z=(-math.pi, math.pi), heading=(-math.pi, math.pi)
 		),
 	)
 
