@@ -1,0 +1,1 @@
+Entrainement d'un contrôleur avec la tâche "Isaac-Velocity-Custom-Unitree-Go2-v0". Utilise le curriculum de terrain par défaut et tous les paramètres d'apprentissage par défaut. Utilise un scanner en mode LIDAR attaché à la tête, avec la zone de balayage limitée à devant le robot et proche. Résultats dans "rsl\rl/unitree\go2\rough/vel\rough\lidar".
