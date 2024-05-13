@@ -53,54 +53,48 @@ ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
 )
 """Rough terrains configuration."""
 
+PLATFORM_sz = 2.0
+BORDER_WIDTH = 0.0
+MAX_SLOPE = 33.0*math.pi/180.0
 VEL_CUSTOM_TERRAIN_CFG = TerrainGeneratorCfg(
-	size=(15.0, 15.0),
-	border_width=2.0,
-	num_rows=6,
-	num_cols=7,
-	horizontal_scale=0.1,
-	vertical_scale=0.005,
+	size=(10.0, 10.0),
+	border_width=5.0, # prevent robots from falling over the edge
+	num_rows=10,
+	num_cols=5*4,
 	use_cache=False,
 	curriculum=True,
 	sub_terrains={
-		"flat": terrain_gen.MeshPlaneTerrainCfg(
-		),
-		"random_rough": terrain_gen.HfRandomUniformTerrainCfg(
-			downsampled_scale=0.2,
-			noise_range=(0.0, 0.10),
-			noise_step=0.01,
-			border_width=2.0
-		),
 		"boxes": terrain_gen.MeshRandomGridTerrainCfg(
+			platform_width=PLATFORM_sz,
+			#border_width=BORDER_WIDTH,
 			grid_width=0.45,
-			grid_height_range=(0.05, 0.2),
-			platform_width=2.0,
+			grid_height_range=(0.0, 0.2),
 		),
-		"hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
-			horizontal_scale=0.01,
-			slope_range=(0.0, 0.7),
-			platform_width=2.0,
-			border_width=2.0,
+		"pyramid_slope": terrain_gen.MeshPyramidSlopeTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			slope_angle_range=(0.0, MAX_SLOPE),
+			holes=False,
 		),
 		"pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-			step_height_range=(0.05, 0.3),
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			step_height_range=(0.0, 0.3),
 			step_width=0.3,
-			platform_width=3.0,
 			holes=False,
-			border_width=2.0,
 		),
-		"hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
-			horizontal_scale=0.01,
-			slope_range=(0.0, 0.7),
-			platform_width=2.0,
-			border_width=2.0,
+		"inv_pyramid_slope": terrain_gen.MeshInvertedPyramidSlopeTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			slope_angle_range=(0.0, MAX_SLOPE),
+			holes=False,
 		),
-		"pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-			step_height_range=(0.05, 0.3),
+		"inv_pyramid_stairs": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			step_height_range=(0.0, 0.3),
 			step_width=0.3,
-			platform_width=3.0,
 			holes=False,
-			border_width=2.0,
 		),
 	},
 )

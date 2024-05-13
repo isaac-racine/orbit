@@ -9,13 +9,13 @@ from dataclasses import MISSING
 import omni.isaac.orbit.sim as sim_utils
 from omni.isaac.orbit.assets import ArticulationCfg, AssetBaseCfg
 from omni.isaac.orbit.envs import RLTaskEnvCfg
-from omni.isaac.orbit.managers import CurriculumTermCfg as CurrTerm
-from omni.isaac.orbit.managers import EventTermCfg as EventTerm
-from omni.isaac.orbit.managers import ObservationGroupCfg as ObsGroup
-from omni.isaac.orbit.managers import ObservationTermCfg as ObsTerm
-from omni.isaac.orbit.managers import RewardTermCfg as RewTerm
+from omni.isaac.orbit.managers import CurriculumTermCfg
+from omni.isaac.orbit.managers import EventTermCfg
+from omni.isaac.orbit.managers import ObservationGroupCfg
+from omni.isaac.orbit.managers import ObservationTermCfg
+from omni.isaac.orbit.managers import RewardTermCfg
 from omni.isaac.orbit.managers import SceneEntityCfg
-from omni.isaac.orbit.managers import TerminationTermCfg as DoneTerm
+from omni.isaac.orbit.managers import TerminationTermCfg
 from omni.isaac.orbit.scene import InteractiveSceneCfg
 from omni.isaac.orbit.sensors import ContactSensorCfg, RayCasterCfg, patterns, CameraCfg
 from omni.isaac.orbit.terrains import TerrainImporterCfg
@@ -27,12 +27,12 @@ import omni.isaac.orbit_tasks.locomotion.velocity.mdp as mdp
 ##
 # Pre-defined configs
 ##
-from omni.isaac.orbit.terrains.config.rough import ROUGH_TERRAINS_CFG
+from omni.isaac.orbit.terrains.config.rough import VEL_CUSTOM_TERRAIN_CFG, ROUGH_TERRAINS_CFG
 from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
 
 
-DEBUG_VIS=True
-EPISODE_LENGTH=20.0
+DEBUG_VIS=False
+EPISODE_LENGTH=25.0
 
 
 ##
@@ -48,8 +48,8 @@ class VelSceneCfg(InteractiveSceneCfg):
 	terrain = TerrainImporterCfg(
 		prim_path="/World/ground",
 		terrain_type="generator",
-		terrain_generator=ROUGH_TERRAINS_CFG.replace(curriculum=True),
-		max_init_terrain_level=5,
+		terrain_generator=VEL_CUSTOM_TERRAIN_CFG,
+		max_init_terrain_level=0,
 		collision_group=-1,
 		physics_material=sim_utils.RigidBodyMaterialCfg(
 			friction_combine_mode="multiply",
@@ -77,14 +77,14 @@ class VelSceneCfg(InteractiveSceneCfg):
 	)
 	contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 	# lights
-	light = AssetBaseCfg(
-		prim_path="/World/light",
-		spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
-	)
-	sky_light = AssetBaseCfg(
-		prim_path="/World/skyLight",
-		spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
-	)
+	#light = AssetBaseCfg(
+	#	prim_path="/World/light",
+	#	spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
+	#)
+	#sky_light = AssetBaseCfg(
+	#	prim_path="/World/skyLight",
+	#	spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
+	#)
 
 ##
 # MDP settings
@@ -97,7 +97,7 @@ class CommandsCfg:
 
 	base_velocity = mdp.UniformVelocityCommandCfg(
 		asset_name="robot",
-		resampling_time_range=(10.0, 10.0),
+		resampling_time_range=(math.inf, math.inf),
 		rel_standing_envs=0.02,
 		rel_heading_envs=1.0,
 		heading_command=True,
@@ -121,21 +121,21 @@ class ObservationsCfg:
 	"""Observation specifications for the MDP."""
 
 	@configclass
-	class PolicyCfg(ObsGroup):
+	class PolicyCfg(ObservationGroupCfg):
 		"""Observations for policy group."""
 
 		# observation terms (order preserved)
-		base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-		base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
-		projected_gravity = ObsTerm(
+		base_lin_vel = ObservationTermCfg(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+		base_ang_vel = ObservationTermCfg(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+		projected_gravity = ObservationTermCfg(
 			func=mdp.projected_gravity,
 			noise=Unoise(n_min=-0.05, n_max=0.05),
 		)
-		velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
-		joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-		joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
-		actions = ObsTerm(func=mdp.last_action)
-		height_scan = ObsTerm(
+		velocity_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "base_velocity"})
+		joint_pos = ObservationTermCfg(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+		joint_vel = ObservationTermCfg(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+		actions = ObservationTermCfg(func=mdp.last_action)
+		height_scan = ObservationTermCfg(
 			func=mdp.height_scan,
 			params={"sensor_cfg": SceneEntityCfg("height_scanner")},
 			noise=Unoise(n_min=-0.1, n_max=0.1),
@@ -155,26 +155,26 @@ class EventCfg:
 	"""Configuration for events."""
 
 	# startup
-	physics_material = EventTerm(
+	physics_material = EventTermCfg(
 		func=mdp.randomize_rigid_body_material,
 		mode="startup",
 		params={
 			"asset_cfg": SceneEntityCfg("robot", body_names=".*"),
 			"static_friction_range": (0.8, 0.8),
 			"dynamic_friction_range": (0.6, 0.6),
-			"restitution_range": (0.0, 0.0),
+			"restitution_range": (0.0, 0.5),
 			"num_buckets": 64,
 		},
 	)
 
-	add_base_mass = EventTerm(
+	add_base_mass = EventTermCfg(
 		func=mdp.randomize_rigid_body_mass,
 		mode="startup",
 		params={"asset_cfg": SceneEntityCfg("robot", body_names="base"), "mass_range": (-1.0, 3.0), "operation": "add"},
 	)
 
 	# reset
-	base_external_force_torque = EventTerm(
+	base_external_force_torque = EventTermCfg(
 		func=mdp.apply_external_force_torque,
 		mode="reset",
 		params={
@@ -184,7 +184,7 @@ class EventCfg:
 		},
 	)
 
-	reset_base = EventTerm(
+	reset_base = EventTermCfg(
 		func=mdp.reset_root_state_uniform,
 		mode="reset",
 		params={
@@ -200,7 +200,7 @@ class EventCfg:
 		},
 	)
 
-	reset_robot_joints = EventTerm(
+	reset_robot_joints = EventTermCfg(
 		func=mdp.reset_joints_by_scale,
 		mode="reset",
 		params={
@@ -215,16 +215,16 @@ class RewardsCfg:
 	"""Reward terms for the MDP."""
 
 	# -- task
-	track_lin_vel_xy_exp = RewTerm(func=mdp.track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
-	track_ang_vel_z_exp = RewTerm(func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	track_lin_vel_xy_exp = RewardTermCfg(func=mdp.track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	track_ang_vel_z_exp = RewardTermCfg(func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
 	
 	# -- penalties
-	lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-	ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
-	dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-0.0002)
-	dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
-	action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
-	feet_air_time = RewTerm(
+	lin_vel_z_l2 = RewardTermCfg(func=mdp.lin_vel_z_l2, weight=-2.0)
+	ang_vel_xy_l2 = RewardTermCfg(func=mdp.ang_vel_xy_l2, weight=-0.05)
+	dof_torques_l2 = RewardTermCfg(func=mdp.joint_torques_l2, weight=-0.0002)
+	dof_acc_l2 = RewardTermCfg(func=mdp.joint_acc_l2, weight=-2.5e-7)
+	action_rate_l2 = RewardTermCfg(func=mdp.action_rate_l2, weight=-0.01)
+	feet_air_time = RewardTermCfg(
 		func=mdp.feet_air_time,
 		weight=0.01,
 		params={
@@ -238,9 +238,10 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
 	"""Termination terms for the MDP."""
-
-	time_out = DoneTerm(func=mdp.time_out, time_out=True)
-	base_contact = DoneTerm(
+	
+	out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
+	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
+	base_contact = TerminationTermCfg(
 		func=mdp.illegal_contact,
 		params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
 	)
@@ -250,7 +251,7 @@ class TerminationsCfg:
 class CurriculumCfg:
 	"""Curriculum terms for the MDP."""
 
-	terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+	terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels_vel2)
 
 
 ##
@@ -277,10 +278,6 @@ class UnitreeGo2VelCustomEnvCfg(RLTaskEnvCfg):
 	def __post_init__(self):
 		"""Post initialization."""
 		
-		self.scene.terrain.terrain_generator.sub_terrains["boxes"].grid_height_range = (0.025, 0.1)
-		self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_range = (0.01, 0.06)
-		self.scene.terrain.terrain_generator.sub_terrains["random_rough"].noise_step = 0.01
-		
 		# general settings
 		self.decimation = 4
 		self.episode_length_s = EPISODE_LENGTH
@@ -289,6 +286,7 @@ class UnitreeGo2VelCustomEnvCfg(RLTaskEnvCfg):
 		self.sim.dt = 0.005
 		self.sim.disable_contact_processing = True
 		self.sim.physics_material = self.scene.terrain.physics_material
+		self.sim.physx.min_position_iteration_count = 25 # a high number prevents objects from going through the ground
 		
 		# update sensor update periods
 		# we tick all the sensors based on the smallest update period (physics update period)
@@ -303,7 +301,7 @@ class UnitreeGo2VelCustomEnvCfg_PLAYCONTROL(UnitreeGo2VelCustomEnvCfg):
 		# post init of parent
 		super().__post_init__()
 		
-		self.scene.terrain.terrain_generator.curriculum = False
+		self.episode_length_s = 3600
 
 		# disable randomization for play
 		self.observations.policy.enable_corruption = False
@@ -316,5 +314,5 @@ class UnitreeGo2VelCustomEnvCfg_PLAYCONTROL(UnitreeGo2VelCustomEnvCfg):
 		self.commands.base_velocity = mdp.UserVelocityCommandCfg(
 			asset_name="robot",
 			debug_vis=DEBUG_VIS,
-			resampling_time_range=(1000.0, 1000.0), # not used 
+			resampling_time_range=(math.inf, math.inf), # not used 
 		)

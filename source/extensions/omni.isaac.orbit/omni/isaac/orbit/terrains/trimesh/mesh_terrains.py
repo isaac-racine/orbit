@@ -157,7 +157,7 @@ def pyramid_slope_terrain(
 	
 	slope_size = np.array([
 		cfg.size[0] - 2 * cfg.border_width - cfg.platform_width,
-		cfg.size[1] - 2 * cfg.border_width - cfg.platform_height
+		cfg.size[1] - 2 * cfg.border_width - cfg.platform_width
 	])/2.0
 	angle = np.array([
 		np.interp(difficulty, (0.0,1.0), cfg.slope_angle_range),
@@ -175,19 +175,18 @@ def pyramid_slope_terrain(
 		meshes_list += border_meshes
 	
 	# generate the terrain
-	origin = [0.0, 0.0, height]
 	
-	center_mesh = make_plane((cfg.platform_width,cfg.platform_height), height, True)
+	center_mesh = make_plane((cfg.platform_width,cfg.platform_width), height, True)
 	meshes_list.append(center_mesh)
 	
-	slope_mesh1 = make_slope(angle[0], (0.0,1.0,0.0), (slope_length[0],cfg.platform_height))
+	slope_mesh1 = make_slope(angle[0], (0.0,1.0,0.0), (slope_length[0],cfg.platform_width))
 	slope_mesh1.apply_translation(np.array([ cfg.platform_width/2 - np.min(slope_mesh1.vertices[:,0]), 0, height - np.max(slope_mesh1.vertices[:,2]) ]))
-	slope_mesh2 = make_slope(-angle[0], (0.0,1.0,0.0), (slope_length[0],cfg.platform_height))
+	slope_mesh2 = make_slope(-angle[0], (0.0,1.0,0.0), (slope_length[0],cfg.platform_width))
 	slope_mesh2.apply_translation(np.array([ -cfg.platform_width/2 + np.min(slope_mesh2.vertices[:,0]), 0, height - np.max(slope_mesh2.vertices[:,2]) ]))
 	slope_mesh3 = make_slope(-angle[1], (1.0,0.0,0.0), (cfg.platform_width,slope_length[1]))
-	slope_mesh3.apply_translation(np.array([ 0, cfg.platform_height/2 - np.min(slope_mesh3.vertices[:,1]), height - np.max(slope_mesh3.vertices[:,2]) ]))
+	slope_mesh3.apply_translation(np.array([ 0, cfg.platform_width/2 - np.min(slope_mesh3.vertices[:,1]), height - np.max(slope_mesh3.vertices[:,2]) ]))
 	slope_mesh4 = make_slope(angle[1], (1.0,0.0,0.0), (cfg.platform_width,slope_length[1]))
-	slope_mesh4.apply_translation(np.array([ 0, -cfg.platform_height/2 + np.min(slope_mesh4.vertices[:,1]), height - np.max(slope_mesh4.vertices[:,2]) ]))
+	slope_mesh4.apply_translation(np.array([ 0, -cfg.platform_width/2 + np.min(slope_mesh4.vertices[:,1]), height - np.max(slope_mesh4.vertices[:,2]) ]))
 	
 	meshes_list += [slope_mesh1,slope_mesh2,slope_mesh3,slope_mesh4]
 	
@@ -220,7 +219,13 @@ def pyramid_slope_terrain(
 		
 		meshes_list += [quadTR, quadTL, quadBR, quadBL]
 	
-	return meshes_list, origin
+	# move the meshes
+	for mesh in meshes_list:
+		for vert in mesh.vertices:
+			vert[0] += cfg.size[0]/2
+			vert[1] += cfg.size[1]/2
+	
+	return meshes_list, [cfg.size[0]/2, cfg.size[1]/2, height]
 
 
 def inverted_pyramid_stairs_terrain(

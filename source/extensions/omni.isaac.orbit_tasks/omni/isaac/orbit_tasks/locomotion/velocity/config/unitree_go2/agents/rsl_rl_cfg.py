@@ -16,8 +16,8 @@ from omni.isaac.orbit_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class UnitreeGo2VelCustomPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 10000
-    save_interval = 100
+    max_iterations = 50000
+    save_interval = 200
     experiment_name = "unitree_go2_vel_custom"
     empirical_normalization = False
     policy = RslRlPpoActorCriticRecurrentCfg(
@@ -42,6 +42,7 @@ class UnitreeGo2VelCustomPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
     )
+
 
 @configclass
 class UnitreeGo2RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
