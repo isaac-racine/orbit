@@ -19,9 +19,6 @@ parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL")
 parser.add_argument("--cpu", action="store_true", default=False, help="Use CPU pipeline")
 parser.add_argument("--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
-parser.add_argument("--lin_sensi", type=float, default=2, help="Gamepad linear speed sensitivity")
-parser.add_argument("--rot_sensi", type=float, default=3.14/2, help="Gamepad rotational speed sensitivity")
-parser.add_argument("--cam_dist", type=float, default=3.0, help="Camera distance w.r.t. robot")
 parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default="Isaac-Velocity-Rough-Unitree-Go2-Play-v1", help="Name of the task.")
 parser.add_argument("--device", choices=["gamepad","keyboard"], default="gamepad", help="Choose from options: gamepad, keyboard")
@@ -72,51 +69,27 @@ def main():
 
 	# load previously trained model
 	ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
-	ppo_runner.load(resume_path)
-	print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+	# write git state to logs
+	runner.add_git_repo_to_log(__file__)
+	# save resume path before creating a new log_dir
+	if agent_cfg.resume:
+		# get path to previous checkpoint
+		resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+		print(f"[INFO]: Loading model checkpoint from: {resume_path}")
+		# load previously trained model
+		runner.load(resume_path)
 
-	# obtain the trained policy for inference
-	policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
+	# set seed of the environment
+	env.seed(agent_cfg.seed)
 
-	# export policy to onnx
-	export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-	export_policy_as_onnx(ppo_runner.alg.actor_critic, export_model_dir, filename="policy.onnx")
-	
-	# setup device control (gamepad, keyboard)
-	
-	if args_cli.device == "gamepad":
-		teleop_interface = Se2Gamepad(
-			v_x_sensitivity     = args_cli.lin_sensi,
-			v_y_sensitivity     = args_cli.lin_sensi/2,
-			omega_z_sensitivity = args_cli.rot_sensi,
-			dead_zone = 0.05
-		)	
-	elif args_cli.device == "keyboard":
-		teleop_interface = Se2Keyboard(
-			#v_x_sensitivity     = args_cli.lin_sensi,
-			#v_y_sensitivity     = args_cli.lin_sensi/2,
-			#omega_z_sensitivity = args_cli.rot_sensi,
-		)
-	
-	teleop_interface.reset()
-	
-	# setup camera
-	cam_controller = ViewportCameraController(env.unwrapped, ViewerCfg())
-	cam_controller.update_view_to_asset_root('robot')
-	cam_controller.update_view_location([0,-args_cli.cam_dist,args_cli.cam_dist],[0,2,0])
-	
-	# run environment
-	com = teleop_interface.advance() ; com[1] *= -1 ; com[2] *= -1;
-	env.unwrapped.command_manager._terms['base_velocity'].vel_command_b[0,:] = torch.tensor(com, device=env.unwrapped.device)
-	obs, _ = env.get_observations()
-	while simulation_app.is_running():
-		with torch.inference_mode():
-			# agent stepping
-			actions = policy(obs)
-			# env stepping
-			com = teleop_interface.advance() ; com[1] *= -1 ; com[2] *= -1;
-			env.unwrapped.command_manager._terms['base_velocity'].vel_command_b[0,:] = torch.tensor(com, device=env.unwrapped.device)
-			obs, _, _, _ = env.step(actions)
+	# dump the configuration into log-directory
+	dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
+	dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+	dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
+	dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
+
+	# run training
+	runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
 
 	# close the simulator
 	env.close()

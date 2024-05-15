@@ -31,8 +31,10 @@ from omni.isaac.orbit.terrains.config.rough import VEL_CUSTOM_TERRAIN_CFG, ROUGH
 from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
 
 
-DEBUG_VIS=False
+DEBUG_VIS=True
 EPISODE_LENGTH=25.0
+
+UNWANTED_CONTACT_BODIES=[".*_hip","Head_.*", ".*_thigh",".*_calf"]
 
 
 ##
@@ -49,7 +51,8 @@ class VelSceneCfg(InteractiveSceneCfg):
 		prim_path="/World/ground",
 		terrain_type="generator",
 		terrain_generator=VEL_CUSTOM_TERRAIN_CFG,
-		max_init_terrain_level=0,
+		min_init_terrain_level=4,
+		max_init_terrain_level=5,
 		collision_group=-1,
 		physics_material=sim_utils.RigidBodyMaterialCfg(
 			friction_combine_mode="multiply",
@@ -76,15 +79,6 @@ class VelSceneCfg(InteractiveSceneCfg):
 		mesh_prim_paths=["/World/ground"],
 	)
 	contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
-	# lights
-	#light = AssetBaseCfg(
-	#	prim_path="/World/light",
-	#	spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
-	#)
-	#sky_light = AssetBaseCfg(
-	#	prim_path="/World/skyLight",
-	#	spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
-	#)
 
 ##
 # MDP settings
@@ -219,6 +213,10 @@ class RewardsCfg:
 	track_ang_vel_z_exp = RewardTermCfg(func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
 	
 	# -- penalties
+	prolonged_contact = RewardTermCfg(func=mdp.prolonged_contact, weight=-1.0, params={
+		"sensor_cfg": SceneEntityCfg("contact_forces", body_names=UNWANTED_CONTACT_BODIES),
+		"max_time": 4.0,
+	})
 	lin_vel_z_l2 = RewardTermCfg(func=mdp.lin_vel_z_l2, weight=-2.0)
 	ang_vel_xy_l2 = RewardTermCfg(func=mdp.ang_vel_xy_l2, weight=-0.05)
 	dof_torques_l2 = RewardTermCfg(func=mdp.joint_torques_l2, weight=-0.0002)
@@ -302,7 +300,16 @@ class UnitreeGo2VelCustomEnvCfg_PLAYCONTROL(UnitreeGo2VelCustomEnvCfg):
 		super().__post_init__()
 		
 		self.episode_length_s = 3600
-
+		
+		self.sim.physx.min_position_iteration_count = 10 # too slow otherwise
+		self.scene.terrain.terrain_generator.num_rows = 5
+		self.scene.terrain.terrain_generator.num_cols = 5
+		self.scene.terrain.terrain_generator.size = (8.0,8.0)
+		self.scene.terrain.min_init_terrain_level=0
+		self.scene.terrain.max_init_terrain_level=0
+		self.curriculum.terrain_levels = None
+		self.terminations.out_of_bounds = None
+		
 		# disable randomization for play
 		self.observations.policy.enable_corruption = False
 		# remove random pushing event

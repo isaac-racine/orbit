@@ -84,6 +84,7 @@ class TerrainImporterCfg:
 		This parameter is used only when the ``terrain_type`` is ``"generator"`` or ``"plane"``.
 	"""
 
+	min_init_terrain_level: int = 0
 	max_init_terrain_level: int | None = None
 	"""The maximum initial terrain level for defining environment origins. Defaults to None.
 

@@ -267,11 +267,12 @@ Contact sensor.
 """
 
 
-def prolonged_contact(env: RLTaskEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
-	"""Penalize prolonged contacts as the time in contact."""
+def prolonged_contact(env: RLTaskEnv, max_time: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	"""Penalize prolonged contacts as the time in contact (clamped to max time)."""
 	# extract the used quantities (to enable type-hinting)
 	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-	return torch.sum(contact_sensor.data.current_contact_time, dim=1)
+	return torch.sum( torch.clamp(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], max=max_time), dim=1 )
+
 
 def undesired_contacts(env: RLTaskEnv, threshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
 	"""Penalize undesired contacts as the number of violations that are above a threshold."""

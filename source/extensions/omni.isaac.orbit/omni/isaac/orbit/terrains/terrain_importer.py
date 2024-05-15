@@ -356,7 +356,7 @@ class TerrainImporter:
 		self.max_terrain_level = num_rows
 		self.max_terrain_type = num_cols
 		# define all terrain levels and types available
-		self.terrain_levels = torch.randint(0, max_init_level + 1, (num_envs,), device=self.device)
+		self.terrain_levels = torch.randint(self.cfg.min_init_terrain_level, max_init_level + 1, (num_envs,), device=self.device)
 		if self.cfg.init_terrain_row is not None :
 			self.terrain_types = torch.full((num_envs,), self.cfg.init_terrain_row, device=self.device, dtype=torch.long)
 		else :
