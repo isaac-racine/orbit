@@ -5,65 +5,10 @@
 
 import gymnasium as gym
 
-from . import agents, flat_env_cfg, rough_env_cfg
+from . import agents
 
 ##
 # Register Gym environments.
 ##
 
-gym.register(
-    id="Isaac-Position-Flat-Unitree-Go2-v0",
-    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": flat_env_cfg.UnitreeGo2FlatEnvCfg,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2FlatPPORunnerCfg,
-    },
-)
-gym.register(
-    id="Isaac-Position-Flat-Unitree-Go2-Play-v0",
-    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": flat_env_cfg.UnitreeGo2FlatEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2FlatPPORunnerCfg,
-    },
-)
 
-gym.register(
-    id="Isaac-Position-Rough-Unitree-Go2-v0",
-    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": rough_env_cfg.UnitreeGo2RoughEnvCfg,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
-    },
-)
-gym.register(
-    id="Isaac-Position-Rough-Unitree-Go2-Play-v0",
-    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": rough_env_cfg.UnitreeGo2RoughEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
-    },
-)
-
-gym.register(
-    id="Isaac-Position-Custom-Unitree-Go2-v0",
-    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": rough_env_cfg.UnitreeGo2CustomEnvCfg,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
-    },
-)
-gym.register(
-    id="Isaac-Position-Custom-Unitree-Go2-Play-v0",
-    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": rough_env_cfg.UnitreeGo2CustomEnvCfg_PLAY,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
-    },
-)

@@ -390,3 +390,138 @@ class NormalVelocityCommand(UniformVelocityCommand):
 		self.vel_command_b[zero_vel_x_env_ids, 0] = 0.0
 		self.vel_command_b[zero_vel_y_env_ids, 1] = 0.0
 		self.vel_command_b[zero_vel_yaw_env_ids, 2] = 0.0
+
+
+class UniformVelocityCommand2(CommandTerm):
+	r"""Command generator that generates a velocity command in SE(2) from uniform distribution.
+	The command comprises of a linear velocity in x and y direction and an angular heading error
+	"""
+
+	cfg: UniformVelocityCommandCfg
+	"""The configuration of the command generator."""
+
+	def __init__(self, cfg: UniformVelocityCommand2Cfg, env: BaseEnv):
+		"""Initialize the command generator.
+
+		Args:
+			cfg: The configuration of the command generator.
+			env: The environment.
+		"""
+		# initialize the base class
+		super().__init__(cfg, env)
+
+		# obtain the robot asset
+		# -- robot
+		self.robot: Articulation = env.scene[cfg.asset_name]
+
+		# crete buffers to store the command
+		# -- command: x vel, y vel, heading error
+		self.vel_command_b = torch.zeros(self.num_envs, 3, device=self.device)
+		self.heading_target = torch.zeros(self.num_envs, device=self.device)
+		# -- metrics
+		self.metrics["error_vel_xy"] = torch.zeros(self.num_envs, device=self.device)
+		self.metrics["error_yaw"] = torch.zeros(self.num_envs, device=self.device)
+
+	def __str__(self) -> str:
+		"""Return a string representation of the command generator."""
+		msg = "UniformVelocityCommand:\n"
+		msg += f"\tCommand dimension: {tuple(self.command.shape[1:])}\n"
+		msg += f"\tResampling time range: {self.cfg.resampling_time_range}\n"
+		return msg
+
+	"""
+	Properties
+	"""
+
+	@property
+	def command(self) -> torch.Tensor:
+		"""The desired base velocity command in the base frame. Shape is (num_envs, 3)."""
+		return self.vel_command_b
+
+	"""
+	Implementation specific functions.
+	"""
+
+	def _update_metrics(self):
+		# time for which the command was executed
+		max_command_time = self.cfg.resampling_time_range[1]
+		max_command_step = max_command_time / self._env.step_dt
+		# logs data
+		self.metrics["error_vel_xy"] += (
+			torch.norm(self.vel_command_b[:, :2] - self.robot.data.root_lin_vel_b[:, :2], dim=-1) / max_command_step
+		)
+		self.metrics["error_yaw"] += (
+			torch.abs(self.vel_command_b[:, 2]) / max_command_step
+		)
+
+	def _resample_command(self, env_ids: Sequence[int]):
+		# sample velocity commands
+		r = torch.empty(len(env_ids), device=self.device)
+		# -- linear velocity - x direction
+		self.vel_command_b[env_ids, 0] = r.uniform_(*self.cfg.ranges.lin_vel_x)
+		# -- linear velocity - y direction
+		self.vel_command_b[env_ids, 1] = r.uniform_(*self.cfg.ranges.lin_vel_y)
+		# -- heading target
+		self.heading_target[env_ids] = r.uniform_(*self.cfg.ranges.heading)
+
+	def _update_command(self):
+		# update heading error
+		self.vel_command_b[:, 2] = math_utils.wrap_to_pi(self.heading_target - self.robot.data.heading_w)
+
+	def _set_debug_vis_impl(self, debug_vis: bool):
+		# set visibility of markers
+		# note: parent only deals with callbacks. not their visibility
+		if debug_vis:
+			# create markers if necessary for the first tome
+			if not hasattr(self, "base_vel_goal_visualizer"):
+				# -- goal
+				marker_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
+				marker_cfg.prim_path = "/Visuals/Command/velocity_goal"
+				marker_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
+				self.base_vel_goal_visualizer = VisualizationMarkers(marker_cfg)
+				# -- current
+				marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
+				marker_cfg.prim_path = "/Visuals/Command/velocity_current"
+				marker_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
+				self.base_vel_visualizer = VisualizationMarkers(marker_cfg)
+			# set their visibility to true
+			self.base_vel_goal_visualizer.set_visibility(True)
+			self.base_vel_visualizer.set_visibility(True)
+		else:
+			if hasattr(self, "base_vel_goal_visualizer"):
+				self.base_vel_goal_visualizer.set_visibility(False)
+				self.base_vel_visualizer.set_visibility(False)
+
+	def _debug_vis_callback(self, event):
+		# get marker location
+		# -- base state
+		base_pos_w = self.robot.data.root_pos_w.clone()
+		base_pos_w[:, 2] += 0.5
+		# -- resolve the scales and quaternions
+		vel_des_arrow_scale, vel_des_arrow_quat = self._resolve_xy_velocity_to_arrow(self.command[:, :2])
+		vel_arrow_scale, vel_arrow_quat = self._resolve_xy_velocity_to_arrow(self.robot.data.root_lin_vel_b[:, :2])
+		# display markers
+		self.base_vel_goal_visualizer.visualize(base_pos_w, vel_des_arrow_quat, vel_des_arrow_scale)
+		self.base_vel_visualizer.visualize(base_pos_w, vel_arrow_quat, vel_arrow_scale)
+
+	"""
+	Internal helpers.
+	"""
+
+	def _resolve_xy_velocity_to_arrow(self, xy_velocity: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+		"""Converts the XY base velocity command to arrow direction rotation."""
+		# obtain default scale of the marker
+		default_scale = self.base_vel_goal_visualizer.cfg.markers["arrow"].scale
+		# arrow-scale
+		arrow_scale = torch.tensor(default_scale, device=self.device).repeat(xy_velocity.shape[0], 1)
+		arrow_scale[:, 0] *= torch.linalg.norm(xy_velocity, dim=1) * 3.0
+		# arrow-direction
+		heading_angle = torch.atan2(xy_velocity[:, 1], xy_velocity[:, 0])
+		zeros = torch.zeros_like(heading_angle)
+		arrow_quat = math_utils.quat_from_euler_xyz(zeros, zeros, heading_angle)
+		# convert everything back from base to world frame
+		base_quat_w = self.robot.data.root_quat_w
+		arrow_quat = math_utils.quat_mul(base_quat_w, arrow_quat)
+
+		return arrow_scale, arrow_quat
+

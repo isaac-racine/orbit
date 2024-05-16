@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from . import agents, flat_env_cfg, rough_env_cfg, custom_env_cfg, custom1_env_cfg
+from . import agents, flat_env_cfg, rough_env_cfg, custom_env_cfg, custom1_env_cfg, custom2_env_cfg
 
 ##
 # Register Gym environments.
@@ -58,13 +58,14 @@ gym.register(
     },
 )
 
+# track velocity command (with speed)
 gym.register(
     id="Isaac-Velocity-Custom-Unitree-Go2-v0",
     entry_point="omni.isaac.orbit.envs:RLTaskEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": custom_env_cfg.UnitreeGo2VelCustomEnvCfg,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustomPPORunnerCfg,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom1PPORunnerCfg,
     },
 )
 gym.register(
@@ -73,7 +74,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": custom1_env_cfg.UnitreeGo2VelCustomEnvCfg,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustomPPORunnerCfg,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom1PPORunnerCfg,
     },
 )
 gym.register(
@@ -82,6 +83,26 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": custom1_env_cfg.UnitreeGo2VelCustomEnvCfg_PLAYCONTROL,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustomPPORunnerCfg,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom1PPORunnerCfg,
+    },
+)
+
+# track the direction part of velocity command
+gym.register(
+    id="Isaac-Velocity-Custom-Unitree-Go2-v2",
+    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": custom2_env_cfg.UnitreeGo2VelCustomEnvCfg,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom2PPORunnerCfg,
+    },
+)
+gym.register(
+    id="Isaac-Velocity-Custom-Unitree-Go2-PlayControl-v2",
+    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": custom2_env_cfg.UnitreeGo2VelCustomEnvCfg_PLAYCONTROL,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom2PPORunnerCfg,
     },
 )

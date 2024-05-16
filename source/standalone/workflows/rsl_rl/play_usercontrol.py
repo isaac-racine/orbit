@@ -21,7 +21,7 @@ parser.add_argument("--disable_fabric", action="store_true", default=False, help
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--lin_sensi", type=float, default=2, help="Gamepad linear speed sensitivity")
 parser.add_argument("--rot_sensi", type=float, default=3.14/2, help="Gamepad rotational speed sensitivity")
-parser.add_argument("--cam_dist", type=float, default=3.0, help="Camera distance w.r.t. robot")
+parser.add_argument("--cam_dist", type=float, default=4.0, help="Camera distance w.r.t. robot")
 parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default="Isaac-Velocity-Rough-Unitree-Go2-Play-v1", help="Name of the task.")
 parser.add_argument("--device", choices=["gamepad","keyboard"], default="gamepad", help="Choose from options: gamepad, keyboard")
@@ -79,8 +79,8 @@ def main():
 	policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
 
 	# export policy to onnx
-	export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
-	export_policy_as_onnx(ppo_runner.alg.actor_critic, export_model_dir, filename="policy.onnx")
+	#export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
+	#export_policy_as_onnx(ppo_runner.alg.actor_critic, export_model_dir, filename="policy.onnx")
 	
 	# setup device control (gamepad, keyboard)
 	

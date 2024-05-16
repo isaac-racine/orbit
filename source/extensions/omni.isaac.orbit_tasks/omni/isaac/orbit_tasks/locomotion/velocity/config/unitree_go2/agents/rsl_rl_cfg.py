@@ -14,7 +14,7 @@ from omni.isaac.orbit_tasks.utils.wrappers.rsl_rl import (
 
 
 @configclass
-class UnitreeGo2VelCustomPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class UnitreeGo2VelCustom1PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 50000
     save_interval = 200
@@ -46,13 +46,16 @@ class UnitreeGo2VelCustomPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 class UnitreeGo2VelCustom2PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 50000
-    save_interval = 200
+    save_interval = 100
     experiment_name = "unitree_go2_vel_custom2"
     empirical_normalization = False
-    policy = RslRlPpoActorCriticCfg(
+    policy = RslRlPpoActorCriticRecurrentCfg(
         init_noise_std=1.0,
-        actor_hidden_dims=[512, 512, 512],
-        critic_hidden_dims=[512, 256, 128],
+        actor_hidden_dims=[512, 512, 512], # >= 4 layers has been found detrimental in literature
+        critic_hidden_dims=[512, 512, 512],
+		rnn_hidden_size = 512,
+		rnn_num_layers = 1,
+		rnn_type = 'lstm',
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(

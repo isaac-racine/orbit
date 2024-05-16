@@ -13,7 +13,7 @@ from .null_command import NullCommand
 from .pose_2d_command import TerrainBasedPose2dCommand, UniformPose2dCommand
 from .pose_command import UniformPoseCommand
 from .scalar_command import UniformSpeedCommand
-from .velocity_command import NormalVelocityCommand, UniformVelocityCommand, UserVelocityCommand
+from .velocity_command import NormalVelocityCommand, UniformVelocityCommand, UserVelocityCommand, UniformVelocityCommand2
 
 
 @configclass
@@ -119,6 +119,26 @@ class UserVelocityCommandCfg(CommandTermCfg):
 		"""Post initialization."""
 		# set the resampling time range to infinity to avoid resampling
 		self.resampling_time_range = (math.inf, math.inf)
+
+
+@configclass
+class UniformVelocityCommand2Cfg(CommandTermCfg):
+	"""Configuration for the uniform velocity command generator."""
+
+	class_type: type = UniformVelocityCommand2
+
+	asset_name: str = MISSING
+	"""Name of the asset in the environment for which the commands are generated."""
+
+	@configclass
+	class Ranges:
+		"""Uniform distribution ranges for the velocity commands."""
+		lin_vel_x: tuple[float, float] = MISSING  # min max [m/s]
+		lin_vel_y: tuple[float, float] = MISSING  # min max [m/s]
+		heading: tuple[float, float] = MISSING	# min max [rad]
+
+	ranges: Ranges = MISSING
+	"""Distribution ranges for the velocity commands."""
 
 
 @configclass

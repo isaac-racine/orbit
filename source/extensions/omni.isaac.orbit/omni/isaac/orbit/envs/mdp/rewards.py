@@ -314,6 +314,70 @@ def track_lin_vel_xy_exp(
 	)
 	return torch.exp(-lin_vel_error / std**2)
 
+def track_ang_vel_z_exp(
+	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of position commands (yaw) using exponential kernel."""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	# compute the error
+	ang_vel_error = torch.square(env.command_manager.get_command(command_name)[:, 2] - asset.data.root_ang_vel_b[:, 2])
+	return torch.exp(-ang_vel_error / std**2)
+
+
+def track_dir_xy_exp(
+	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of direction commands (xy axes) using exponential kernel."""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	# compute the error
+	dir_error = torch.sum(
+		torch.square(
+			torch.nn.functional.normalize(command[:,:2], dim=1) - torch.nn.functional.normalize(asset.data.root_lin_vel_b[:, :2], dim=1)
+		),
+		dim=1,
+	)
+	return torch.exp(-dir_error / std**2)
+
+def track_speed_xy_exp(
+	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of speed commands (xy axes) using exponential kernel."""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	# compute the error
+	speed_error = torch.square(
+		torch.linalg.norm(command[:,:2], dim=1) - torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1)
+	)
+	return torch.exp(-speed_error / std**2)
+
+def track_heading_exp(
+	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of heading commands (yaw) using exponential kernel."""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	# compute the error
+	heading_error = torch.square(env.command_manager.get_command(command_name)[:, 2])
+	return torch.exp(-heading_error / std**2)
+
+
+def over_speed_xy(
+	env: RLTaskEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Penalize going over speed commands (xy axes)."""
+	# extract the used quantities (to enable type-hinting)
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	# compute the error
+	over_speed = (torch.linalg.norm(command[:,:2], dim=1) < torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1)).float()
+	
+	return over_speed
+
+
 # command pos is relative to base pos, so when the agent is at the command pos, the command pos is 0,0
 def track_pos_xy_exp(
 	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
@@ -329,34 +393,5 @@ def track_pos_xy_exp(
 	return torch.exp(-pos_error / std**2)
 
 
-def track_ang_vel_z_exp(
-	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
-	"""Reward tracking of position commands (yaw) using exponential kernel."""
-	# extract the used quantities (to enable type-hinting)
-	asset: RigidObject = env.scene[asset_cfg.name]
-	# compute the error
-	ang_vel_error = torch.square(env.command_manager.get_command(command_name)[:, 2] - asset.data.root_ang_vel_b[:, 2])
-	return torch.exp(-ang_vel_error / std**2)
 
 
-def track_heading_exp(
-	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
-	"""Reward tracking of heading commands (yaw) using exponential kernel."""
-	# extract the used quantities (to enable type-hinting)
-	asset: RigidObject = env.scene[asset_cfg.name]
-	# compute the error
-	heading_error = torch.square(env.command_manager.get_command(command_name)[:, 3])
-	return torch.exp(-heading_error / std**2)
-
-
-def track_speedxy_exp(
-	env: RLTaskEnv, std: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
-	"""Reward tracking of speed commands (xy) using exponential kernel."""
-	# extract the used quantities (to enable type-hinting)
-	asset: RigidObject = env.scene[asset_cfg.name]
-	# compute the error
-	speed_error = torch.square(env.command_manager.get_command(command_name)[:,0] - torch.norm(asset.data.root_lin_vel_b[:, :2]))
-	return torch.exp(-speed_error / std**2)
