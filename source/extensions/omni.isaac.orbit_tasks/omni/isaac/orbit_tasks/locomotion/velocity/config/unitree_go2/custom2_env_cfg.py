@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import math
+from math import pi, sqrt
 from dataclasses import MISSING
 
 import omni.isaac.orbit.sim as sim_utils
@@ -32,11 +33,13 @@ from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
 
 
 DEBUG_VIS=False
-EPISODE_LENGTH=60.0
+EPISODE_LENGTH=20.0
 
-ILLEGAL_CONTACT_BODIES=["base", "Head_.*", ".*_hip", ".*_thigh", ".*_calf"]
-UNWANTED_CONTACT_BODIES=[]
-MAX_COMSPEED = 3.0
+ILLEGAL_CONTACT_BODIES=["base", "Head_.*"]#["base", "Head_.*", ".*_hip", ".*_thigh", ".*_calf"]
+UNWANTED_CONTACT_BODIES=[".*_hip", ".*_thigh", ".*_calf"]
+WANTED_CONTACT_BODIES=[".*_foot"]
+MAX_COMSPEED = 2.0
+MAX_PUSHSPEED = 1.0
 
 
 ##
@@ -49,12 +52,29 @@ class VelSceneCfg(InteractiveSceneCfg):
 	"""Configuration for the terrain scene with a legged robot."""
 
 	# ground terrain
+	#terrain = TerrainImporterCfg(
+	#	prim_path="/World/ground",
+	#	terrain_type="generator",
+	#	terrain_generator=VEL_CUSTOM_TERRAIN_CFG,
+	#	min_init_terrain_level=0,
+	#	max_init_terrain_level=0,
+	#	collision_group=-1,
+	#	physics_material=sim_utils.RigidBodyMaterialCfg(
+	#		friction_combine_mode="multiply",
+	#		restitution_combine_mode="multiply",
+	#		static_friction=1.0,
+	#		dynamic_friction=1.0,
+	#	),
+	#	visual_material=sim_utils.MdlFileCfg(
+	#		mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
+	#		project_uvw=True,
+	#	),
+	#	debug_vis=DEBUG_VIS,
+	#)
+	# plane terrain
 	terrain = TerrainImporterCfg(
 		prim_path="/World/ground",
-		terrain_type="generator",
-		terrain_generator=VEL_CUSTOM_TERRAIN_CFG,
-		min_init_terrain_level=0,
-		max_init_terrain_level=0,
+		terrain_type="plane",
 		collision_group=-1,
 		physics_material=sim_utils.RigidBodyMaterialCfg(
 			friction_combine_mode="multiply",
@@ -80,7 +100,7 @@ class VelSceneCfg(InteractiveSceneCfg):
 		debug_vis=DEBUG_VIS,
 		mesh_prim_paths=["/World/ground"],
 	)
-	contact_sensor = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
+	contact_sensor = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True, track_pose=True, debug_vis=DEBUG_VIS)
 
 ##
 # MDP settings
@@ -103,8 +123,11 @@ class CommandsCfg:
 @configclass
 class ActionsCfg:
 	"""Action specifications for the MDP."""
-
-	joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], use_default_offset=False)
+	
+	#joint_act = mdp.JointEffortActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25)
+	joint_act = mdp.JointEffortActionCfg(asset_name="robot", joint_names=[".*"])
+	#joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25, use_default_offset=False)
+	#joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], use_default_offset=False)
 
 @configclass
 class ObservationsCfg:
@@ -206,26 +229,26 @@ class EventCfg:
 	push_robot = EventTermCfg(
 		func=mdp.push_by_setting_velocity,
 		mode="interval",
-		interval_range_s=(4.0,EPISODE_LENGTH),
-		params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+		interval_range_s=(3.0, min(5.0, EPISODE_LENGTH)),
+		params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}},
 	)
 
 @configclass
 class RewardsCfg:
 	"""Reward terms for the MDP."""
-
-	# -- task
-	track_dir_xy_exp = RewardTermCfg(func=mdp.track_dir_xy_exp, weight=2.0, params={"command_name": "base_velocity", "std": math.sqrt(0.1)})
-	track_speed_xy_exp = RewardTermCfg(func=mdp.track_speed_xy_exp, weight=0.1, params={"command_name": "base_velocity", "std": math.sqrt(0.1)})
-	track_heading_exp = RewardTermCfg(func=mdp.track_heading_exp, weight=1.0, params={"command_name": "base_velocity", "std": math.sqrt(math.pi/8)})
 	
-	# -- penalties
-	#over_speed_xy = RewardTermCfg(func=mdp.over_speed_xy, weight=-1.0, params={"command_name": "base_velocity"})
-	#
-	#prolonged_contact = RewardTermCfg(func=mdp.prolonged_contact, weight=-3.0, params={
-	#	"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES),
-	#	"max_time": 4.0,
-	#})
+	"""
+	# -- task
+	#track_lin_vel_xy_exp = RewardTermCfg(func=mdp.track_lin_vel_xy_exp, weight=10.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	#track_dir_xy_exp = RewardTermCfg(func=mdp.track_dir_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	#track_heading_exp = RewardTermCfg(func=mdp.track_heading_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	#track_speed_xy_exp = RewardTermCfg(func=mdp.track_speed_xy_exp, weight=1.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
+	## -- penalties
+	#lin_vel_z_l2 = RewardTermCfg(func=mdp.lin_vel_z_l2, weight=-2.0)
+	#ang_vel_xy_l2 = RewardTermCfg(func=mdp.ang_vel_xy_l2, weight=-0.05)
+	#dof_torques_l2 = RewardTermCfg(func=mdp.joint_torques_l2, weight=-0.0002)
+	#dof_acc_l2 = RewardTermCfg(func=mdp.joint_acc_l2, weight=-2.5e-7)
+	#action_rate_l2 = RewardTermCfg(func=mdp.action_rate_l2, weight=-0.01)
 	#feet_air_time = RewardTermCfg(
 	#	func=mdp.feet_air_time,
 	#	weight=0.01,
@@ -235,20 +258,77 @@ class RewardsCfg:
 	#		"threshold": 0.5,
 	#	},
 	#)
-	##flat_orientation_l2 = RewardTermCfg(func=mdp.flat_orientation_l2, weight=-1.0) # not applicable when robot climbs stairs...
-	#
-	is_terminated = RewardTermCfg(func=mdp.is_terminated, weight=-0.1)
-	lin_vel_z_l2 = RewardTermCfg(func=mdp.lin_vel_z_l2, weight=-1.0)
-	ang_vel_xy_l2 = RewardTermCfg(func=mdp.ang_vel_xy_l2, weight=-0.05)
-	dof_torques_l2 = RewardTermCfg(func=mdp.joint_torques_l2, weight=-0.0002)
-	dof_acc_l2 = RewardTermCfg(func=mdp.joint_acc_l2, weight=-2.5e-7)
-	action_rate_l2 = RewardTermCfg(func=mdp.action_rate_l2, weight=-0.01)
+	#flat_orientation_l2 = RewardTermCfg(func=mdp.flat_orientation_l2, weight=-0.1)
+	"""
 	
+	"""
+	# command tracking rewards
+	track_dir_xy_unit = RewardTermCfg(func=mdp.track_dir_xy_unit, weight=5.0, params={"command_name": "base_velocity"})
+	track_heading_unit = RewardTermCfg(func=mdp.track_heading_unit, weight=5.0, params={"command_name": "base_velocity"})
+	track_speed_xy_unit = RewardTermCfg(func=mdp.track_speed_xy_unit, weight=2.0, params={"command_name": "base_velocity",
+		"max_err": 0.5
+	})
+	
+	# task shaping penalties
+	#undesired_contacts_unit = RewardTermCfg(func=mdp.undesired_contacts_unit, weight=-10.0, params={ # 1 if contact 0 otherwise
+	#	"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES),
+	#	"treshold": 0.1 # N
+	#})
+	#unflat_orientation_unit = RewardTermCfg(func=mdp.unflat_orientation_unit, weight=-1.0, params={
+	#	"min_dot": 0.1 # -1 is perfectly flat, 1 is flipped over
+	#})
+	joint_acc_unit = RewardTermCfg(func=mdp.joint_acc_unit, weight=-0.5, params={ # proportional to max acceleration for all joints
+		"max_acc": 2.0e3
+	})
+	joint_vel_unit = RewardTermCfg(func=mdp.joint_vel_unit, weight=-0.5, params={ # proportional to max velocity for all joints
+		"max_vel": 0.25e2
+	})
+	joint_torques_unit = RewardTermCfg(func=mdp.joint_torques_unit, weight=-0.1, params={ # proportional to max torque for all joints
+		"max_torque": 40 # Nm (45 Nm is peak for GO2)
+	})
+	action_rate_unit = RewardTermCfg(func=mdp.action_rate_unit, weight=-0.5, params={
+		"max_act": 1.0e1
+	})
+	#prolonged_contacts_unit = RewardTermCfg(func=mdp.prolonged_contacts_unit, weight=-0.1, params={ # proportional to max time for all contacts
+	#	"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES),
+	#	"max_time": 4 # s
+	#})
+	#contact_forces_unit = RewardTermCfg(func=mdp.contact_forces_unit, weight=-0.001, params={ # proportional to max force for all contacts
+	#	"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES),
+	#	"max_force": 50 # N
+	#})
+	
+	# task shaping rewards
+	#joint_goodpose_unit = RewardTermCfg(func=mdp.joint_goodpose_unit, weight=1.0)
+	#flat_orientation_unit = RewardTermCfg(func=mdp.flat_orientation_unit, weight=0.1, params={
+	#	"max_dot": -0.75 # -1 is perfectly flat, 1 is flipped over
+	#})
+	## reward only ground / foot contact
+	#desired_contacts_unit = RewardTermCfg(func=mdp.desired_contacts_unit, weight=0.1, params={ # 1 if contact 0 otherwise
+	#	"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=WANTED_CONTACT_BODIES),
+	#	"treshold": 0.1 # N
+	#})
+	"""
+	
+	
+	#r_joint_acc_exp = RewardTermCfg(func=mdp.r_joint_acc_exp,                                params={"maxerr": 500    }, weight=0.5)
+	#r_action_rate_exp = RewardTermCfg(func=mdp.r_action_rate_exp,                              params={"maxerr": 10      }, weight=1 )
+	#r_action_exp = RewardTermCfg(func=mdp.r_action_exp,                                        params={"maxerr": 40      }, weight=1 )
+	
+	#r_flat_orientation_exp = RewardTermCfg(func=mdp.r_flat_orientation_exp,                    params={"maxerr": 0.3    }, weight=1.5)
+	#r_velz_exp = RewardTermCfg(func=mdp.r_velz_exp,                                          params={"maxerr": 3.0    }, weight=0.5)
+	#r_joint_pose_exp = RewardTermCfg(func=mdp.r_joint_pose_exp,                              params={"maxerr": pi     }, weight=0.1)
+	#
+	#r_dir_xy_exp = RewardTermCfg(func=mdp.r_dir_xy_exp, params={"command_name": "base_velocity",     "maxerr": sqrt(2)}, weight=1.4)
+	#r_heading_exp = RewardTermCfg(func=mdp.r_heading_exp, params={"command_name": "base_velocity",   "maxerr": pi/2   }, weight=1.0)
+	#r_speed_xy_exp = RewardTermCfg(func=mdp.r_speed_xy_exp, params={"command_name": "base_velocity", "maxerr": 0.5    }, weight=1.0)
+	
+
 @configclass
 class TerminationsCfg:
 	"""Termination terms for the MDP."""
 	
-	out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
+	#out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
 	base_contact = TerminationTermCfg(
 		func=mdp.illegal_contact,
@@ -260,7 +340,7 @@ class TerminationsCfg:
 class CurriculumCfg:
 	"""Curriculum terms for the MDP."""
 
-	terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels_vel2)
+	#terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels_vel2)
 
 
 ##
@@ -315,10 +395,8 @@ class UnitreeGo2VelCustomEnvCfg_PLAYCONTROL(UnitreeGo2VelCustomEnvCfg):
 		
 		self.episode_length_s = 3600
 		
-		self.sim.physx.min_position_iteration_count = 10 # too slow otherwise
 		self.scene.terrain.terrain_generator.num_rows = 5
-		self.scene.terrain.terrain_generator.num_cols = 5
-		self.scene.terrain.terrain_generator.size = (8.0,8.0)
+		#self.scene.terrain.terrain_generator.size = (8.0,8.0)
 		self.scene.terrain.min_init_terrain_level=0
 		self.scene.terrain.max_init_terrain_level=0
 		self.curriculum.terrain_levels = None

@@ -125,9 +125,9 @@ class ContactSensor(SensorBase):
             env_ids = slice(None)
         # reset accumulative data buffers
         self._data.net_forces_w[env_ids] = 0.0
-        self._data.net_forces_w_history[env_ids] = 0.0
         if self.cfg.history_length > 0:
-            self._data.net_forces_w_history[env_ids] = 0.0
+			self._data.net_forces_w_history[env_ids] = 0.0
+			if self.cfg.track_pose : self._data.pos_w_history[env_ids] = 0.0
         # reset force matrix
         if len(self.cfg.filter_prim_paths_expr) != 0:
             self._data.force_matrix_w[env_ids] = 0.0
@@ -272,16 +272,16 @@ class ContactSensor(SensorBase):
         self._data.net_forces_w = torch.zeros(self._num_envs, self._num_bodies, 3, device=self._device)
         # optional buffers
         # -- history of net forces
-        if self.cfg.history_length > 0:
-            self._data.net_forces_w_history = torch.zeros(
-                self._num_envs, self.cfg.history_length, self._num_bodies, 3, device=self._device
-            )
-        else:
-            self._data.net_forces_w_history = self._data.net_forces_w.unsqueeze(1)
+        if self.cfg.history_length > 0 : self._data.net_forces_w_history = torch.zeros(
+			self._num_envs, self.cfg.history_length, self._num_bodies, 3, device=self._device
+        )
         # -- pose of sensor origins
         if self.cfg.track_pose:
             self._data.pos_w = torch.zeros(self._num_envs, self._num_bodies, 3, device=self._device)
             self._data.quat_w = torch.zeros(self._num_envs, self._num_bodies, 4, device=self._device)
+			if self.cfg.history_length > 0 : self._data.pos_w_history = torch.zeros(
+				self._num_envs, self.cfg.history_length, self._num_bodies, 3, device=self._device
+			)
         # -- air/contact time between contacts
         if self.cfg.track_air_time:
             self._data.last_air_time = torch.zeros(self._num_envs, self._num_bodies, device=self._device)
@@ -306,10 +306,6 @@ class ContactSensor(SensorBase):
         #   This isn't the most efficient way to do this, but it's the easiest to implement.
         net_forces_w = self.contact_physx_view.get_net_contact_forces(dt=self._sim_physics_dt)
         self._data.net_forces_w[env_ids, :, :] = net_forces_w.view(-1, self._num_bodies, 3)[env_ids]
-        # update contact force history
-        if self.cfg.history_length > 0:
-            self._data.net_forces_w_history[env_ids, 1:] = self._data.net_forces_w_history[env_ids, :-1].clone()
-            self._data.net_forces_w_history[env_ids, 0] = self._data.net_forces_w[env_ids]
 
         # obtain the contact force matrix
         if len(self.cfg.filter_prim_paths_expr) != 0:
@@ -324,6 +320,15 @@ class ContactSensor(SensorBase):
             pose = self.body_physx_view.get_transforms().view(-1, self._num_bodies, 7)[env_ids]
             pose[..., 3:] = convert_quat(pose[..., 3:], to="wxyz")
             self._data.pos_w[env_ids], self._data.quat_w[env_ids] = pose.split([3, 4], dim=-1)
+		
+		# update contact history
+        if self.cfg.history_length > 0:
+            self._data.net_forces_w_history[env_ids, 1:] = self._data.net_forces_w_history[env_ids, :-1].clone()
+            self._data.net_forces_w_history[env_ids, 0] = self._data.net_forces_w[env_ids]
+			if self.cfg.track_pose:
+				self._data.pos_w_history[env_ids, 1:] = self._data.pos_w_history[env_ids, :-1].clone()
+				self._data.pos_w_history[env_ids, 0] = self._data.pos_w[env_ids]
+		
         # obtain the air time
         if self.cfg.track_air_time:
             # -- time elapsed since last update

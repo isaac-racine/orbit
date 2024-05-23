@@ -12,8 +12,10 @@ the reward introduced by the function.
 from __future__ import annotations
 
 import torch
+from math import pi
 from typing import TYPE_CHECKING
 
+import omni.isaac.orbit.utils.math as math_utils
 from omni.isaac.orbit.assets import Articulation, RigidObject
 from omni.isaac.orbit.managers import SceneEntityCfg
 from omni.isaac.orbit.managers.manager_base import ManagerTermBase
@@ -187,6 +189,14 @@ def joint_deviation_l1(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"))
 	# compute out of limits constraints
 	angle = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
 	return torch.sum(torch.abs(angle), dim=1)
+
+def joint_deviation_l2(env, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Penalize joint positions that deviate from the default one."""
+	# extract the used quantities (to enable type-hinting)
+	asset: Articulation = env.scene[asset_cfg.name]
+	# compute out of limits constraints
+	angle = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
+	return torch.sum(torch.square(angle), dim=1)
 
 
 def joint_pos_limits(env: RLTaskEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
@@ -393,5 +403,224 @@ def track_pos_xy_exp(
 	return torch.exp(-pos_error / std**2)
 
 
+# normalized rewards : [0,1] range ------------------------------------------------------------------------------
+
+# command tracking rewards
+def track_dir_xy_unit(
+	env: RLTaskEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of direction commands (xy axes) using normalized value."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	dir_b = torch.nn.functional.normalize(asset.data.root_lin_vel_b[:, :2])
+	dir_c = torch.nn.functional.normalize(command[:,:2])
+	dot_prod = torch.sum(dir_b * dir_c, dim=1) # [-1,1] range, 1 when on target
+	return (dot_prod + 1) / 2 # [0, 1] range, 1 when on target
+def track_heading_unit(
+	env: RLTaskEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of heading commands (yaw) using normalized value."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	heading_error = command[:, 2] # [-pi, pi] range, 0 when on target
+	return 1 - torch.abs(heading_error) / pi # [0, 1] range, 1 when on target
+def track_speed_xy_unit(
+	env: RLTaskEnv, max_err: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of speed commands (xy axes) using normalized value. Normalization relative to max_err."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	speed_error = torch.linalg.norm(command[:,:2], dim=1) - torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1) # [-inf,inf] range, 0 when on target
+	return 1 - torch.clip(torch.abs(speed_error), max=max_err) / max_err # [0, 1] range, 1 when on target
+
+# unit task penalties
+def prolonged_contacts_unit(env: RLTaskEnv, max_time: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	"""Penalize undesired prolonged contact received. using normalized value. Normalization relative to max_time."""
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	contact_time = torch.amax(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], 1) # [0,inf] range, 0 when on target
+	return torch.clip(contact_time, max=max_time) / max_time # [0,1] range, 0 when on target
+def undesired_contacts_unit(env: RLTaskEnv, treshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	"""Penalize undesired contact received. using normalized value. Either 1 for contact or 0 for none."""
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	forces = torch.amax(torch.norm(contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids], dim=-1), (1,2)) # [0,inf] range, 0 when on target
+	return (forces > treshold).float() # [0,1] range, 0 when on target
+def contact_forces_unit(env: RLTaskEnv, max_force: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	"""Penalize maximum contact force received. using normalized value. Normalization relative to max_force."""
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	forces = torch.amax(torch.norm(contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids], dim=-1), (1,2)) # [0,inf] range, 0 when on target
+	return torch.clip(forces, max=max_force) / max_force # [0,1] range, 0 when on target
+def joint_torques_unit(env: RLTaskEnv, max_torque: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Penalize max joint torques applied on the articulation using normalized value. Normalization relative to max_torque.
+	NOTE: Only the joints configured in :attr:`asset_cfg.joint_ids` will have their joint torques contribute to the result."""
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	torques = asset.data.applied_torque[:, asset_cfg.joint_ids]
+	max_torques = torch.amax(torch.abs(torques), dim=1) # [0,inf] range, 0 when on target
+	return torch.clip(max_torques, max=max_torque) / max_torque # [0,1] range, 0 when on target
+def joint_acc_unit(env: RLTaskEnv, max_acc: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Penalize max joint accelerations on the articulation using normalized value. Normalization relative to max_acc."""
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	acc = asset.data.joint_acc[:, asset_cfg.joint_ids]
+	max_accs = torch.amax(torch.abs(acc), dim=1) # [0,inf] range, 0 when on target
+	return torch.clip(max_accs, max=max_acc) / max_acc # [0,1] range, 0 when on target
+def joint_vel_unit(env: RLTaskEnv, max_vel: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Penalize max joint velocities on the articulation using normalized value. Normalization relative to max_vel."""
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	vel = asset.data.joint_vel[:, asset_cfg.joint_ids]
+	max_vels = torch.amax(torch.abs(vel), dim=1) # [0,inf] range, 0 when on target
+	return torch.clip(max_vels, max=max_vel) / max_vel # [0,1] range, 0 when on target
+def action_rate_unit(env: RLTaskEnv, max_act: float) -> torch.Tensor:
+	"""Penalize the rate of change of the actions."""
+	act = torch.norm(env.action_manager.action - env.action_manager.prev_action, dim=1)
+	return torch.clip(act, max=max_act) / max_act # [0,1] range, 0 when on target
+def unflat_orientation_unit(env: RLTaskEnv, min_dot: float = -1.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Penalize non-flat base orientation using normalized value."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b)
+	dot_prod = dir_g[:, 2]  # [-1,1] range, -1 when on target
+	return (torch.clip(dot_prod, min=min_dot) - min_dot) / (1-min_dot) # [0,1] range, 0 when on target
+
+# unit task rewards
+# returns 1 if error is 0, 0 if error is max
+# form : (maxerr - clip(|err|, maxerr)) / maxerr
+
+def r_dir_xy_unit(
+	env: RLTaskEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of direction commands (xy axes) using normalized value."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	dir_b = torch.nn.functional.normalize(asset.data.root_lin_vel_b[:, :2])
+	dir_c = torch.nn.functional.normalize(command[:,:2])
+	dot_prod = torch.sum(dir_b * dir_c, dim=1) # [-1,1] range, 1 when on target
+	return (dot_prod + 1) / 2 # [0, 1] range, 1 when on target
+def r_heading_unit(
+	env: RLTaskEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of heading commands (yaw) using normalized value."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	heading_error = command[:, 2] # [-pi, pi] range, 0 when on target
+	return 1 - torch.abs(heading_error) / pi # [0, 1] range, 1 when on target
+def r_speed_xy_unit(
+	env: RLTaskEnv, a: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	"""Reward tracking of speed commands (xy axes) using normalized value. Normalization relative to max_err."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	speed_error = torch.linalg.norm(command[:,:2], dim=1) - torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1) # [-inf,inf] range, 0 when on target
+	return 1 - torch.clip(torch.abs(speed_error), max=a) / a # [0, 1] range, 1 when on target
+
+def r_flat_orientation_unit(env: RLTaskEnv, a: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Reward flat base orientation using normalized value. Normalization relative to max_dot."""
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b, dim=-1)
+	err = torch.sum(torch.abs(env.nZ - dir_g), dim=-1)
+	return (a - torch.clip(dot_prod, max=a)) / (1+a) # [0,1] range, 1 when on target
+def r_joint_pose_unit(env, a: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Reward joint positions that are close to the default one."""
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	angle_dist = torch.norm(asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids], dim=-1) # [0,?pi?] range, 0 when on target
+	return 1 - torch.clip(angle_dist, max=pi) / pi # [0,1] range, 1 when on target
 
 
+
+# exponential task rewards :  -----------------------------------------------------------------------------------------------------------------
+# [0,1] range : 1 when err=0, 0.01 when err=maxerr
+# form : exp( -(err / (errfac*maxerr))**2 )  ;  no clipping
+errfac: float = 0.46 # gives approx 0.01 at err=maxerr
+
+def r_joint_val_exp(env: RLTaskEnv, maxerr: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	err = torch.amax( getattr(asset.data, val_name)[:, asset_cfg.joint_ids], dim=1 )
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+def r_joint_jerk_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return r_joint_val_exp(env, maxerr, "joint_jerk", asset_cfg)
+def r_joint_acc_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return r_joint_val_exp(env, maxerr, "joint_acc", asset_cfg)
+def r_joint_vel_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return r_joint_val_exp(env, maxerr, "joint_vel", asset_cfg)
+def r_joint_torque_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return r_joint_val_exp(env, maxerr, "applied_torque", asset_cfg)
+
+def r_action_exp(env: RLTaskEnv, maxerr: float) -> torch.Tensor:
+	err = torch.linalg.norm(env.action_manager.action, dim=-1)
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+def r_action_rate_exp(env: RLTaskEnv, maxerr: float) -> torch.Tensor:
+	diff = env.action_manager.action - env.action_manager.prev_action
+	err = torch.linalg.norm(diff, dim=-1)
+	return torch.exp( -(err / (errfac*maxerr))**2 )	
+
+def r_flat_orientation_exp(env: RLTaskEnv, maxerr: float = 2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b, dim=-1)
+	err = torch.linalg.norm(env.nZ - dir_g, dim=-1) # 2 at max
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+def r_unflat_orientation_exp(env: RLTaskEnv, maxerr: float = 2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b, dim=-1)
+	err = torch.linalg.norm(env.Z - dir_g, dim=-1) # 2 at max
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+
+def r_velz_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	err = asset.data.root_lin_vel_b[:, 2]
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+
+def r_joint_pose_exp(env, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	"""Reward joint positions that are close to the default one."""
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	diff = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
+	err = torch.linalg.norm(diff, dim=-1)
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+
+def r_dir_xy_exp(
+	env: RLTaskEnv, command_name: str, maxerr: float = 2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	dir_b = torch.nn.functional.normalize(asset.data.root_lin_vel_b[:, :2])
+	dir_c = torch.nn.functional.normalize(command[:,:2])
+	err = torch.linalg.norm(dir_b - dir_c, dim=-1) # 2 at max
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+def r_heading_exp(
+	env: RLTaskEnv, command_name: str, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	err = command[:, 2] # pi at max
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+def r_speed_xy_exp(
+	env: RLTaskEnv, maxerr: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	err = torch.linalg.norm(command[:,:2], dim=1) - torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1)
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+
+
+# exponential task penalties :  -----------------------------------------------------------------------------------------------------------------
+# [0,1] range : 0 when err=0, 0.99 when err=maxerr
+# form : 1 - exp( -(err / (errfac*maxerr))**2 )  ;  no clipping

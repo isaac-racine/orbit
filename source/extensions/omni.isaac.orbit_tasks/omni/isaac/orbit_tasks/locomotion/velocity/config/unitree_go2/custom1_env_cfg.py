@@ -306,8 +306,7 @@ class UnitreeGo2VelCustomEnvCfg_PLAYCONTROL(UnitreeGo2VelCustomEnvCfg):
 		
 		self.sim.physx.min_position_iteration_count = 10 # too slow otherwise
 		self.scene.terrain.terrain_generator.num_rows = 5
-		self.scene.terrain.terrain_generator.num_cols = 5
-		self.scene.terrain.terrain_generator.size = (8.0,8.0)
+		#self.scene.terrain.terrain_generator.size = (8.0,8.0)
 		self.scene.terrain.min_init_terrain_level=0
 		self.scene.terrain.max_init_terrain_level=0
 		self.curriculum.terrain_levels = None

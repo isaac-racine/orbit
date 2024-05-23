@@ -116,8 +116,8 @@ def main():
 			# env stepping
 			com = teleop_interface.advance() ; com[1] *= -1 ; com[2] *= -1;
 			env.unwrapped.command_manager._terms['base_velocity'].vel_command_b[0,:] = torch.tensor(com, device=env.unwrapped.device)
-			obs, _, _, _ = env.step(actions)
-
+			obs, rew, _, _ = env.step(actions)
+			
 	# close the simulator
 	env.close()
 

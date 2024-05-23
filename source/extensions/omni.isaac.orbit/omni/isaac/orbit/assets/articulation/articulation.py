@@ -216,9 +216,10 @@ class Articulation(RigidObject):
         self._data.body_state_w[..., 7:] = self.root_physx_view.get_link_velocities()
 
         # -- joint states
-        self._data.joint_pos[:] = self.root_physx_view.get_dof_positions()
-        self._data.joint_vel[:] = self.root_physx_view.get_dof_velocities()
-        self._data.joint_acc[:] = (self._data.joint_vel - self._previous_joint_vel) / dt
+        self._data.joint_pos[:]  = self.root_physx_view.get_dof_positions()
+        self._data.joint_vel[:]  = self.root_physx_view.get_dof_velocities()
+        self._data.joint_acc[:]  = (self._data.joint_vel - self._previous_joint_vel) / dt
+        self._data.joint_jerk[:] = (self._data.joint_acc - self._previous_joint_acc) / dt
 
         # -- update common data
         # note: these are computed in the base class
@@ -226,6 +227,7 @@ class Articulation(RigidObject):
 
         # -- update history buffers
         self._previous_joint_vel[:] = self._data.joint_vel[:]
+        self._previous_joint_acc[:] = self._data.joint_acc[:]
 
     def find_joints(
         self, name_keys: str | Sequence[str], joint_subset: list[str] | None = None, preserve_order: bool = False
@@ -325,6 +327,7 @@ class Articulation(RigidObject):
         self._data.joint_vel[env_ids, joint_ids] = velocity
         self._previous_joint_vel[env_ids, joint_ids] = velocity
         self._data.joint_acc[env_ids, joint_ids] = 0.0
+        self._previous_joint_acc[env_ids, joint_ids] = 0.0
         # set into simulation
         self.root_physx_view.set_dof_positions(self._data.joint_pos, indices=physx_env_ids)
         self.root_physx_view.set_dof_velocities(self._data.joint_vel, indices=physx_env_ids)
@@ -614,14 +617,16 @@ class Articulation(RigidObject):
         super()._create_buffers()
         # history buffers
         self._previous_joint_vel = torch.zeros(self.num_instances, self.num_joints, device=self.device)
+        self._previous_joint_acc = torch.zeros(self.num_instances, self.num_joints, device=self.device)
 
         # asset data
         # -- properties
         self._data.joint_names = self.joint_names
         # -- joint states
-        self._data.joint_pos = torch.zeros(self.num_instances, self.num_joints, device=self.device)
-        self._data.joint_vel = torch.zeros_like(self._data.joint_pos)
-        self._data.joint_acc = torch.zeros_like(self._data.joint_pos)
+        self._data.joint_pos  = torch.zeros(self.num_instances, self.num_joints, device=self.device)
+        self._data.joint_vel  = torch.zeros_like(self._data.joint_pos)
+        self._data.joint_acc  = torch.zeros_like(self._data.joint_pos)
+        self._data.joint_jerk = torch.zeros_like(self._data.joint_pos)
         self._data.default_joint_pos = torch.zeros_like(self._data.joint_pos)
         self._data.default_joint_vel = torch.zeros_like(self._data.joint_pos)
         # -- joint commands

@@ -221,6 +221,8 @@ class SimulationContext(_SimulationContext):
             physics_prim_path=self.cfg.physics_prim_path,
             device=self.cfg.device,
         )
+        
+        self.set_render_mode(self.RenderMode.NO_RENDERING)
 
     """
     Operations - New.

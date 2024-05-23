@@ -178,7 +178,7 @@ def pyramid_stairsrand_terrain(
 		meshes_list += border_meshes
 	
 	# generate the terrain
-	origin = [0.0, 0.0, height]
+	origin = [cfg.size[0]/2, cfg.size[1]/2, height]
 
 	center_mesh = make_plane((cfg.platform_width,cfg.platform_height), height, True)
 	meshes_list.append(center_mesh)
@@ -279,7 +279,7 @@ def pyramid_slope_terrain(
 		meshes_list += border_meshes
 	
 	# generate the terrain
-	origin = [0.0, 0.0, height]
+	origin = [cfg.size[0]/2, cfg.size[1]/2, height]
 	
 	center_mesh = make_plane((cfg.platform_width,cfg.platform_height), height, True)
 	meshes_list.append(center_mesh)
@@ -314,6 +314,7 @@ def pyramid_slope_terrain(
 		for vert in mesh.vertices:
 			vert[0] += cfg.size[0]/2
 			vert[1] += cfg.size[1]/2
+	
 	
 	return meshes_list, origin
 

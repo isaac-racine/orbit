@@ -88,6 +88,9 @@ class RLTaskEnv(BaseEnv, gym.Env):
 		self.render_mode = render_mode
 
 		# initialize data and constants
+		# usefull constants
+		self.nZ = torch.tensor([0.0,0.0,-1.0], device=self.device)
+		self.Z = torch.tensor([0.0,0.0,1.0], device=self.device)
 		# -- counter for curriculum
 		self.common_step_counter = 0
 		# -- init buffers

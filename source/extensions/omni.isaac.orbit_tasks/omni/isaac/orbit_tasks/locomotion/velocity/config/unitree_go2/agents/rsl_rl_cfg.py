@@ -45,17 +45,17 @@ class UnitreeGo2VelCustom1PPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class UnitreeGo2VelCustom2PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 50000
+    max_iterations = 20000
     save_interval = 100
     experiment_name = "unitree_go2_vel_custom2"
     empirical_normalization = False
-    policy = RslRlPpoActorCriticRecurrentCfg(
+    policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
-        actor_hidden_dims=[512, 512, 512], # >= 4 layers has been found detrimental in literature
-        critic_hidden_dims=[512, 512, 512],
-		rnn_hidden_size = 512,
-		rnn_num_layers = 1,
-		rnn_type = 'lstm',
+        actor_hidden_dims=[512, 256, 128], # >= 4 layers has been found detrimental in literature
+        critic_hidden_dims=[512, 256, 128],
+		#rnn_hidden_size = 512,
+		#rnn_num_layers = 1,
+		#rnn_type = 'lstm',
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(

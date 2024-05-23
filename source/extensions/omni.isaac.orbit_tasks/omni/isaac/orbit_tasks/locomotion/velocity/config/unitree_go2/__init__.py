@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from . import agents, flat_env_cfg, rough_env_cfg, custom_env_cfg, custom1_env_cfg, custom2_env_cfg
+from . import agents, flat_env_cfg, rough_env_cfg, custom1_env_cfg, custom2_env_cfg
 
 ##
 # Register Gym environments.
@@ -59,15 +59,6 @@ gym.register(
 )
 
 # track velocity command (with speed)
-gym.register(
-    id="Isaac-Velocity-Custom-Unitree-Go2-v0",
-    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
-    disable_env_checker=True,
-    kwargs={
-        "env_cfg_entry_point": custom_env_cfg.UnitreeGo2VelCustomEnvCfg,
-        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom1PPORunnerCfg,
-    },
-)
 gym.register(
     id="Isaac-Velocity-Custom-Unitree-Go2-v1",
     entry_point="omni.isaac.orbit.envs:RLTaskEnv",
