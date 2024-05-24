@@ -226,12 +226,12 @@ class EventCfg:
 	)
 	
 	# interval
-	push_robot = EventTermCfg(
-		func=mdp.push_by_setting_velocity,
-		mode="interval",
-		interval_range_s=(3.0, min(5.0, EPISODE_LENGTH)),
-		params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}},
-	)
+	#push_robot = EventTermCfg(
+	#	func=mdp.push_by_setting_velocity,
+	#	mode="interval",
+	#	interval_range_s=(3.0, min(5.0, EPISODE_LENGTH)),
+	#	params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}},
+	#)
 
 @configclass
 class RewardsCfg:
@@ -312,16 +312,18 @@ class RewardsCfg:
 	
 	
 	#r_joint_acc_exp = RewardTermCfg(func=mdp.r_joint_acc_exp,                                params={"maxerr": 500    }, weight=0.5)
-	#r_action_rate_exp = RewardTermCfg(func=mdp.r_action_rate_exp,                              params={"maxerr": 10      }, weight=1 )
-	#r_action_exp = RewardTermCfg(func=mdp.r_action_exp,                                        params={"maxerr": 40      }, weight=1 )
+	r_action_rate_exp = RewardTermCfg(func=mdp.r_action_rate_exp,                            params={"maxerr": 10     }, weight=1.5)
+	r_action_exp = RewardTermCfg(func=mdp.r_action_exp,                                      params={"maxerr": 40     }, weight=0.1)
 	
-	#r_flat_orientation_exp = RewardTermCfg(func=mdp.r_flat_orientation_exp,                    params={"maxerr": 0.3    }, weight=1.5)
-	#r_velz_exp = RewardTermCfg(func=mdp.r_velz_exp,                                          params={"maxerr": 3.0    }, weight=0.5)
-	#r_joint_pose_exp = RewardTermCfg(func=mdp.r_joint_pose_exp,                              params={"maxerr": pi     }, weight=0.1)
-	#
-	#r_dir_xy_exp = RewardTermCfg(func=mdp.r_dir_xy_exp, params={"command_name": "base_velocity",     "maxerr": sqrt(2)}, weight=1.4)
-	#r_heading_exp = RewardTermCfg(func=mdp.r_heading_exp, params={"command_name": "base_velocity",   "maxerr": pi/2   }, weight=1.0)
-	#r_speed_xy_exp = RewardTermCfg(func=mdp.r_speed_xy_exp, params={"command_name": "base_velocity", "maxerr": 0.5    }, weight=1.0)
+	r_flat_orientation_exp = RewardTermCfg(func=mdp.r_flat_orientation_exp,                  params={"maxerr": 0.3    }, weight=1.5)
+	r_velz_exp = RewardTermCfg(func=mdp.r_velz_exp,                                          params={"maxerr": 3.0    }, weight=0.5)
+	r_joint_pose_exp = RewardTermCfg(func=mdp.r_joint_pose_exp,                              params={"maxerr": pi     }, weight=0.3)
+	r_coll_drag_exp = RewardTermCfg(func=mdp.r_coll_drag_exp, params={
+		"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=".*_foot"),                        "maxerr": 0.05   }, weight=0.1)
+	
+	r_dir_xy_exp = RewardTermCfg(func=mdp.r_dir_xy_exp, params={"command_name": "base_velocity",     "maxerr": sqrt(2)}, weight=1.4)
+	r_heading_exp = RewardTermCfg(func=mdp.r_heading_exp, params={"command_name": "base_velocity",   "maxerr": pi/2   }, weight=1.2)
+	r_speed_xy_exp = RewardTermCfg(func=mdp.r_speed_xy_exp, params={"command_name": "base_velocity", "maxerr": 0.5    }, weight=1.2)
 	
 
 @configclass

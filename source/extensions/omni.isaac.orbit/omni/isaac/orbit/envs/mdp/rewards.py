@@ -585,13 +585,19 @@ def r_velz_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneE
 	err = asset.data.root_lin_vel_b[:, 2]
 	return torch.exp( -(err / (errfac*maxerr))**2 )
 
-def r_joint_pose_exp(env, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	"""Reward joint positions that are close to the default one."""
+def r_joint_pose_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	asset: Articulation = env.scene[asset_cfg.name]
 	
 	diff = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
 	err = torch.linalg.norm(diff, dim=-1)
 	return torch.exp( -(err / (errfac*maxerr))**2 )
+
+def r_coll_drag_exp(env: RLTaskEnv, maxerr: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	err = torch.linalg.norm(contact_sensor.data.current_contact_distance[:,sensor_cfg.body_ids], dim=-1)
+	#return torch.exp( -(err / (errfac*maxerr))**2 )
+	return err
 
 def r_dir_xy_exp(
 	env: RLTaskEnv, command_name: str, maxerr: float = 2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
