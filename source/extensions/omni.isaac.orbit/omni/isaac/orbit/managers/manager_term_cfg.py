@@ -243,6 +243,10 @@ class RewardTermCfg(ManagerTermBaseCfg):
     Note:
         If the weight is zero, the reward term is ignored.
     """
+    
+    has_two: bool = False
+    """The term has two weights"""
+    weight2: float = MISSING
 
 
 ##

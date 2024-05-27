@@ -35,8 +35,8 @@ from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
 DEBUG_VIS=False
 EPISODE_LENGTH=20.0
 
-ILLEGAL_CONTACT_BODIES=["base", "Head_.*"]#["base", "Head_.*", ".*_hip", ".*_thigh", ".*_calf"]
-UNWANTED_CONTACT_BODIES=[".*_hip", ".*_thigh", ".*_calf"]
+ILLEGAL_CONTACT_BODIES=["base", "Head_.*", ".*_hip", ".*_thigh", ".*_calf"]
+UNWANTED_CONTACT_BODIES=["base", "Head_.*", ".*_hip", ".*_thigh", ".*_calf"]
 WANTED_CONTACT_BODIES=[".*_foot"]
 MAX_COMSPEED = 2.0
 MAX_PUSHSPEED = 1.0
@@ -125,8 +125,8 @@ class ActionsCfg:
 	"""Action specifications for the MDP."""
 	
 	#joint_act = mdp.JointEffortActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25)
-	joint_act = mdp.JointEffortActionCfg(asset_name="robot", joint_names=[".*"])
-	#joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25, use_default_offset=False)
+	#joint_act = mdp.JointEffortActionCfg(asset_name="robot", joint_names=[".*"])
+	joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25, use_default_offset=False)
 	#joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], use_default_offset=False)
 
 @configclass
@@ -311,19 +311,21 @@ class RewardsCfg:
 	"""
 	
 	
-	#r_joint_acc_exp = RewardTermCfg(func=mdp.r_joint_acc_exp,                                params={"maxerr": 500    }, weight=0.5)
-	r_action_rate_exp = RewardTermCfg(func=mdp.r_action_rate_exp,                            params={"maxerr": 10     }, weight=1.5)
-	r_action_exp = RewardTermCfg(func=mdp.r_action_exp,                                      params={"maxerr": 40     }, weight=0.1)
+	#p_contact_sparse = RewardTermCfg(func=mdp.p_contact_sparse, params={                                               
+	#	"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES)},                                                                    weight=0.3         )
+	#rp_joint_acc_bilin = RewardTermCfg(func=mdp.rp_joint_acc_bilin, has_two=True,               params={               "minerr": 20,   "maxerr": 500         }, weight=1, weight2=1)
+	#rp_flat_orientation_bilin = RewardTermCfg(func=mdp.rp_flat_orientation_bilin, has_two=True, params={               "minerr": 0.3,  "maxerr": 2           }, weight=1, weight2=1)
+	#																									               
+	#rp_vel_xy_bilin = RewardTermCfg(func=mdp.rp_vel_xy_bilin, has_two=True, params={"command_name": "base_velocity",   "minerr": 0.25, "maxerr": MAX_COMSPEED}, weight=1, weight2=1)
+	#rp_heading_bilin = RewardTermCfg(func=mdp.rp_heading_bilin, has_two=True, params={"command_name": "base_velocity", "minerr": pi/2, "maxerr": pi          }, weight=1, weight2=1)
 	
-	r_flat_orientation_exp = RewardTermCfg(func=mdp.r_flat_orientation_exp,                  params={"maxerr": 0.3    }, weight=1.5)
-	r_velz_exp = RewardTermCfg(func=mdp.r_velz_exp,                                          params={"maxerr": 3.0    }, weight=0.5)
-	r_joint_pose_exp = RewardTermCfg(func=mdp.r_joint_pose_exp,                              params={"maxerr": pi     }, weight=0.3)
-	r_coll_drag_exp = RewardTermCfg(func=mdp.r_coll_drag_exp, params={
-		"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=".*_foot"),                        "maxerr": 0.05   }, weight=0.1)
 	
-	r_dir_xy_exp = RewardTermCfg(func=mdp.r_dir_xy_exp, params={"command_name": "base_velocity",     "maxerr": sqrt(2)}, weight=1.4)
-	r_heading_exp = RewardTermCfg(func=mdp.r_heading_exp, params={"command_name": "base_velocity",   "maxerr": pi/2   }, weight=1.2)
-	r_speed_xy_exp = RewardTermCfg(func=mdp.r_speed_xy_exp, params={"command_name": "base_velocity", "maxerr": 0.5    }, weight=1.2)
+	r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin, params={                             "maxerr": 500             }, weight=1)
+	r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={               "maxerr": 2               }, weight=1)
+	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                           "maxerr": pi*1.5          }, weight=1)
+	
+	r_vel_xy_lin = RewardTermCfg(func=mdp.r_vel_xy_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COMSPEED*1.5}, weight=1)
+	r_heading_lin = RewardTermCfg(func=mdp.r_heading_lin, params={"command_name": "base_velocity", "maxerr": pi              }, weight=1)
 	
 
 @configclass
@@ -332,11 +334,13 @@ class TerminationsCfg:
 	
 	#out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
-	base_contact = TerminationTermCfg(
+	illegal_contact = TerminationTermCfg(
 		func=mdp.illegal_contact,
-		time_out=False,
 		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 0.1},
 	)
+	
+	#c_contact_err = TerminationTermCfg(func=mdp.c_contact_err, params={
+	#	"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=ILLEGAL_CONTACT_BODIES), "maxprob": 0.01})
 
 @configclass
 class CurriculumCfg:

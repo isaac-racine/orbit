@@ -403,7 +403,8 @@ def track_pos_xy_exp(
 	return torch.exp(-pos_error / std**2)
 
 
-# normalized rewards : [0,1] range ------------------------------------------------------------------------------
+
+# unit task rewards : [0,1] range ---------------------------------------------------------------------------------------------------------------
 
 # command tracking rewards
 def track_dir_xy_unit(
@@ -435,7 +436,6 @@ def track_speed_xy_unit(
 	
 	speed_error = torch.linalg.norm(command[:,:2], dim=1) - torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1) # [-inf,inf] range, 0 when on target
 	return 1 - torch.clip(torch.abs(speed_error), max=max_err) / max_err # [0, 1] range, 1 when on target
-
 # unit task penalties
 def prolonged_contacts_unit(env: RLTaskEnv, max_time: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
 	"""Penalize undesired prolonged contact received. using normalized value. Normalization relative to max_time."""
@@ -488,11 +488,9 @@ def unflat_orientation_unit(env: RLTaskEnv, min_dot: float = -1.0, asset_cfg: Sc
 	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b)
 	dot_prod = dir_g[:, 2]  # [-1,1] range, -1 when on target
 	return (torch.clip(dot_prod, min=min_dot) - min_dot) / (1-min_dot) # [0,1] range, 0 when on target
-
 # unit task rewards
 # returns 1 if error is 0, 0 if error is max
 # form : (maxerr - clip(|err|, maxerr)) / maxerr
-
 def r_dir_xy_unit(
 	env: RLTaskEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
@@ -547,7 +545,7 @@ errfac: float = 0.46 # gives approx 0.01 at err=maxerr
 def r_joint_val_exp(env: RLTaskEnv, maxerr: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	asset: Articulation = env.scene[asset_cfg.name]
 	
-	err = torch.amax( getattr(asset.data, val_name)[:, asset_cfg.joint_ids], dim=1 )
+	err = torch.linalg.norm( getattr(asset.data, val_name)[:, asset_cfg.joint_ids], dim=-1 )
 	return torch.exp( -(err / (errfac*maxerr))**2 )
 def r_joint_jerk_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	return r_joint_val_exp(env, maxerr, "joint_jerk", asset_cfg)
@@ -592,23 +590,33 @@ def r_joint_pose_exp(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = 
 	err = torch.linalg.norm(diff, dim=-1)
 	return torch.exp( -(err / (errfac*maxerr))**2 )
 
-def r_coll_drag_exp(env: RLTaskEnv, maxerr: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+def r_contact_dist_exp(env: RLTaskEnv, maxerr: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
 	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
 	
 	err = torch.linalg.norm(contact_sensor.data.current_contact_distance[:,sensor_cfg.body_ids], dim=-1)
-	#return torch.exp( -(err / (errfac*maxerr))**2 )
-	return err
+	return torch.exp( -(err / (errfac*maxerr))**2 )
+def r_contact_time_exp(env: RLTaskEnv, maxerr: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	err = torch.linalg.norm(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], dim=-1)
+	return torch.exp( -(err / (errfac*maxerr))**2 )
 
 def r_dir_xy_exp(
-	env: RLTaskEnv, command_name: str, maxerr: float = 2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+	env: RLTaskEnv, command_name: str, maxerr: float = 2.0, treshold: float = 0.2, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
 	asset: RigidObject = env.scene[asset_cfg.name]
 	command: torch.Tensor = env.command_manager.get_command(command_name)
 	
-	dir_b = torch.nn.functional.normalize(asset.data.root_lin_vel_b[:, :2])
+	dir_b = torch.nn.functional.normalize(asset.data.root_lin_vel_b[:, :2], dim=1)
+	speed_b = torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1)
 	dir_c = torch.nn.functional.normalize(command[:,:2])
 	err = torch.linalg.norm(dir_b - dir_c, dim=-1) # 2 at max
-	return torch.exp( -(err / (errfac*maxerr))**2 )
+	
+	# no reward if movement is too slow
+	res = torch.exp( -(err / (errfac*maxerr))**2 )
+	res *= (speed_b > treshold).float()
+	
+	return res
 def r_heading_exp(
 	env: RLTaskEnv, command_name: str, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
@@ -625,8 +633,154 @@ def r_speed_xy_exp(
 	
 	err = torch.linalg.norm(command[:,:2], dim=1) - torch.linalg.norm(asset.data.root_lin_vel_b[:, :2], dim=1)
 	return torch.exp( -(err / (errfac*maxerr))**2 )
+def r_vel_xy_exp(
+	env: RLTaskEnv, maxerr: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	diff = command[:,:2] - asset.data.root_lin_vel_b[:, :2]
+	err = torch.linalg.norm(diff, dim=-1)
+	return torch.exp( -(err / (errfac*maxerr))**2 )
 
 
-# exponential task penalties :  -----------------------------------------------------------------------------------------------------------------
-# [0,1] range : 0 when err=0, 0.99 when err=maxerr
-# form : 1 - exp( -(err / (errfac*maxerr))**2 )  ;  no clipping
+
+# sparse task penalties :  -----------------------------------------------------------------------------------------------------------------
+# [-1,0] range : -1 when bad, 0 when good
+def p_joint_val_sparse(env: RLTaskEnv, treshold: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: Articulation = env.scene[asset_cfg.name]
+	isbad = torch.linalg.norm( getattr(asset.data, val_name)[:, asset_cfg.joint_ids], dim=1 ) > treshold
+	return -isbad.float()
+def p_joint_acc_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return p_joint_val_sparse(env, treshold, "joint_acc", asset_cfg)
+def p_joint_vel_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return p_joint_val_sparse(env, treshold, "joint_vel", asset_cfg)
+def p_joint_torque_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return p_joint_val_sparse(env, treshold, "applied_torque", asset_cfg)
+
+def p_contact_sparse(env: RLTaskEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	isbad = torch.amax(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], dim=-1) > 0.01
+	return -isbad.float()
+
+
+
+# sparse task penalties :  -----------------------------------------------------------------------------------------------------------------
+# [0,1] range : 0 when bad, 1 when good
+def r_alive_sparse(env: RLTaskEnv) -> torch.Tensor:
+	"""Reward for being alive."""
+	return (~env.termination_manager.terminated).float()
+
+
+
+# bi-linear task reward / penalties : ---------------------------------------------------------------------------------------------------------
+# [-1,1] range : [-1,0] is |err|>minerr, [0,1] is |err|<minerr, -1 is maxerr, 1 is err=0
+# form :
+#	err = clip(|err|)
+# 	if err < minerr : rew = 1 - err / minerr
+# 	else            : pen = - (err-minerr) / (maxerr-minerr)
+
+def bilin(err: float, minerr: float, maxerr: float):
+	# err should be >0
+	err = torch.clip(err, max=maxerr)
+	return (
+		(1 - err / minerr) * (err < minerr),
+		((minerr-err) / (maxerr-minerr)) * (err > minerr)
+	)
+
+def rp_joint_val_bilin(env: RLTaskEnv, minerr: float, maxerr: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	data = getattr(asset.data, val_name)[:, asset_cfg.joint_ids]
+	err = torch.torch.linalg.norm(data , dim=-1)
+	return bilin(err, minerr, maxerr)
+def rp_joint_acc_bilin(env: RLTaskEnv, minerr: float, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return rp_joint_val_bilin(env, minerr, maxerr, "joint_acc", asset_cfg)
+def rp_joint_vel_bilin(env: RLTaskEnv, minerr: float, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return rp_joint_val_bilin(env, minerr, maxerr, "joint_vel", asset_cfg)
+def rp_joint_torque_bilin(env: RLTaskEnv, minerr: float, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return rp_joint_val_bilin(env, minerr, maxerr, "applied_torque", asset_cfg)
+
+def rp_flat_orientation_bilin(env: RLTaskEnv, minerr: float, maxerr: float=2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b, dim=-1)
+	err = torch.linalg.norm(env.nZ - dir_g, dim=-1) # 2 at max
+	return bilin(err, minerr, maxerr)
+
+def rp_vel_xy_bilin(
+	env: RLTaskEnv, minerr: float, maxerr: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	diff = command[:,:2] - asset.data.root_lin_vel_b[:, :2]
+	err = torch.linalg.norm(diff, dim=-1)
+	return bilin(err, minerr, maxerr)
+def rp_heading_bilin(
+	env: RLTaskEnv, command_name: str, minerr: float, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	err = torch.abs(command[:, 2]) # pi at max
+	return bilin(err, minerr, maxerr)
+
+
+
+# linear task rewards : ---------------------------------------------------------------------------------------------------------
+# [0,1] range : 0 is maxerr, 1 is err=0
+# form :
+#	err = clip(|err|)
+# 	rew = 1 - err / maxerr
+
+def lin(err: float, maxerr: float):
+	# err should be >0
+	err = torch.clip(err, max=maxerr)
+	return 1 - err / maxerr
+
+def r_joint_val_lin(env: RLTaskEnv, maxerr: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	data = getattr(asset.data, val_name)[:, asset_cfg.joint_ids]
+	err = torch.linalg.norm(data , dim=-1)
+	return lin(err, maxerr)
+def r_joint_acc_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return r_joint_val_lin(env, maxerr, "joint_acc", asset_cfg)
+def r_joint_vel_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return r_joint_val_lin(env, maxerr, "joint_vel", asset_cfg)
+def r_joint_torque_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return r_joint_val_lin(env, maxerr, "applied_torque", asset_cfg)
+
+def r_flat_orientation_lin(env: RLTaskEnv, maxerr: float=2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b, dim=-1)
+	err = torch.linalg.norm(env.nZ - dir_g, dim=-1) # 2 at max
+	return lin(err, maxerr)
+
+def r_joint_pose_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	diff = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
+	err = torch.linalg.norm(diff, dim=-1)
+	return lin(err, maxerr)
+
+def r_vel_xy_lin(
+	env: RLTaskEnv, maxerr: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	diff = command[:,:2] - asset.data.root_lin_vel_b[:, :2]
+	err = torch.linalg.norm(diff, dim=-1)
+	return lin(err, maxerr)
+def r_heading_lin(
+	env: RLTaskEnv, command_name: str, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	err = torch.abs(command[:, 2]) # pi at max
+	return lin(err, maxerr)
