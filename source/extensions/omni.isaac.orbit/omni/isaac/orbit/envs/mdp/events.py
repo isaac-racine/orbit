@@ -345,7 +345,7 @@ def push_by_setting_velocity(
     """
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject | Articulation = env.scene[asset_cfg.name]
-
+	
     # velocities
     vel_w = asset.data.root_vel_w[env_ids]
     # sample random velocities

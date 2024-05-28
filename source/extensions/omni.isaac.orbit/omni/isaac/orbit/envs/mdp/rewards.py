@@ -666,7 +666,7 @@ def p_contact_sparse(env: RLTaskEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor
 
 
 
-# sparse task penalties :  -----------------------------------------------------------------------------------------------------------------
+# sparse task rewards :  -----------------------------------------------------------------------------------------------------------------
 # [0,1] range : 0 when bad, 1 when good
 def r_alive_sparse(env: RLTaskEnv) -> torch.Tensor:
 	"""Reward for being alive."""

@@ -59,9 +59,6 @@ def terrain_levels_vel2(
 ) -> torch.Tensor:
 	"""Curriculum based on the distance the robot walked when commanded to move at a desired velocity.
 
-	This term is used to increase the difficulty of the terrain when the robot walks far enough and decrease the
-	difficulty when the robot walks less than half of the distance required by the commanded velocity.
-
 	.. note::
 		It is only possible to use this term with the terrain type ``generator``. For further information
 		on different terrain types, check the :class:`omni.isaac.orbit.terrains.TerrainImporter` class.
@@ -80,7 +77,7 @@ def terrain_levels_vel2(
 	distance = torch.norm(asset.data.root_pos_w[env_ids, :2] - env.scene.env_origins[env_ids, :2], dim=1)
 	
 	# robots that walked far enough progress to harder terrains
-	move_up = torch.logical_and(required_distance > 0.33*terrain.cfg.terrain_generator.size[0], distance >= 0.9*required_distance)
+	move_up = distance >= 0.95*terrain.cfg.terrain_generator.size[0]/2
 	# robots that walked less than half of their required distance go to simpler terrains
 	move_down = distance < 0.5*required_distance
 	move_down *= ~move_up

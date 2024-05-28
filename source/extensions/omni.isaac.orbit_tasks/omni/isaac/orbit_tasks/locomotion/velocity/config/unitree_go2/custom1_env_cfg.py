@@ -31,10 +31,11 @@ from omni.isaac.orbit.terrains.config.rough import VEL_CUSTOM_TERRAIN_CFG, ROUGH
 from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
 
 
-DEBUG_VIS=False
+DEBUG_VIS=True
 EPISODE_LENGTH=60.0
 
 UNWANTED_CONTACT_BODIES=[".*_hip","Head_.*", ".*_thigh",".*_calf"]
+MAX_PUSHSPEED = 1.5
 
 
 ##
@@ -51,8 +52,8 @@ class VelSceneCfg(InteractiveSceneCfg):
 		prim_path="/World/ground",
 		terrain_type="generator",
 		terrain_generator=VEL_CUSTOM_TERRAIN_CFG,
-		min_init_terrain_level=4,
-		max_init_terrain_level=5,
+		min_init_terrain_level=0,
+		max_init_terrain_level=0,
 		collision_group=-1,
 		physics_material=sim_utils.RigidBodyMaterialCfg(
 			friction_combine_mode="multiply",
@@ -168,16 +169,6 @@ class EventCfg:
 	)
 
 	# reset
-	base_external_force_torque = EventTermCfg(
-		func=mdp.apply_external_force_torque,
-		mode="reset",
-		params={
-			"asset_cfg": SceneEntityCfg("robot", body_names="base"),
-			"force_range": (0.0, 0.0),
-			"torque_range": (-0.0, 0.0),
-		},
-	)
-
 	reset_base = EventTermCfg(
 		func=mdp.reset_root_state_uniform,
 		mode="reset",
@@ -202,7 +193,17 @@ class EventCfg:
 			"velocity_range": (0.0, 0.0),
 		},
 	)
-
+	
+	# interval
+	push_robot = EventTermCfg(
+		func=mdp.push_by_setting_velocity,
+		mode="interval",
+		curriculum_dependency = True,
+		curriculum_row_range = (1,-1), # starting from 2nd level
+		curriculum_col_range = (1,1), # random boxes ground
+		interval_range_s=(3.0, min(5.0, EPISODE_LENGTH)),
+		params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}},
+	)
 
 @configclass
 class RewardsCfg:
@@ -213,10 +214,6 @@ class RewardsCfg:
 	track_ang_vel_z_exp = RewardTermCfg(func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
 	
 	# -- penalties
-	prolonged_contact = RewardTermCfg(func=mdp.prolonged_contact, weight=-3.0, params={
-		"sensor_cfg": SceneEntityCfg("contact_forces", body_names=UNWANTED_CONTACT_BODIES),
-		"max_time": 4.0,
-	})
 	lin_vel_z_l2 = RewardTermCfg(func=mdp.lin_vel_z_l2, weight=-2.0)
 	ang_vel_xy_l2 = RewardTermCfg(func=mdp.ang_vel_xy_l2, weight=-0.05)
 	dof_torques_l2 = RewardTermCfg(func=mdp.joint_torques_l2, weight=-0.0002)
@@ -304,7 +301,6 @@ class UnitreeGo2VelCustomEnvCfg_PLAYCONTROL(UnitreeGo2VelCustomEnvCfg):
 		
 		self.episode_length_s = 3600
 		
-		self.sim.physx.min_position_iteration_count = 10 # too slow otherwise
 		self.scene.terrain.terrain_generator.num_rows = 5
 		#self.scene.terrain.terrain_generator.size = (8.0,8.0)
 		self.scene.terrain.min_init_terrain_level=0

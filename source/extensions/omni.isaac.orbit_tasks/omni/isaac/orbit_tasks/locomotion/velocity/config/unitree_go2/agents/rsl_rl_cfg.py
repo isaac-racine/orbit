@@ -20,12 +20,10 @@ class UnitreeGo2VelCustom1PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     save_interval = 200
     experiment_name = "unitree_go2_vel_custom"
     empirical_normalization = False
-    policy = RslRlPpoActorCriticRecurrentCfg(
+    policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
-		rnn_hidden_size = 512,
-		rnn_num_layers = 1,
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(

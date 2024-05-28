@@ -67,7 +67,6 @@ VEL_CUSTOM_TERRAIN_CFG = TerrainGeneratorCfg(
 		"flat": terrain_gen.MeshPlaneTerrainCfg(),
 		"boxes": terrain_gen.MeshRandomGridTerrainCfg(
 			platform_width=PLATFORM_sz,
-			#border_width=BORDER_WIDTH,
 			grid_width=0.45,
 			grid_height_range=(0.0, 0.2),
 		),
