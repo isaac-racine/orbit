@@ -55,7 +55,7 @@ def terrain_levels_vel(
     return torch.mean(terrain.terrain_levels.float())
 
 def terrain_levels_vel2(
-	env: RLTaskEnv, env_ids: Sequence[int], asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+	env: RLTaskEnv, env_ids: Sequence[int], command_name: str = "base_velocity", asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
 	"""Curriculum based on the distance the robot walked when commanded to move at a desired velocity.
 
@@ -69,7 +69,7 @@ def terrain_levels_vel2(
 	# extract the used quantities (to enable type-hinting)
 	asset: Articulation = env.scene[asset_cfg.name]
 	terrain: TerrainImporter = env.scene.terrain
-	command = env.command_manager.get_command("base_velocity")
+	command = env.command_manager.get_command(command_name)
 	
 	# straight line distance the robot should have walked if it respected the command
 	required_distance = torch.norm(command[env_ids, :2], dim=1) * env.episode_length_buf[env_ids]*env.step_dt

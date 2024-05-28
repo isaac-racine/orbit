@@ -14,6 +14,8 @@ from __future__ import annotations
 import torch
 from typing import TYPE_CHECKING
 
+from omni.isaac.orbit.utils import configclass
+from dataclasses import MISSING
 import omni.isaac.orbit.utils.math as math_utils
 from omni.isaac.orbit.assets import Articulation, RigidObject
 from omni.isaac.orbit.managers import SceneEntityCfg

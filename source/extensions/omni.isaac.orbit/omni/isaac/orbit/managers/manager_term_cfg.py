@@ -50,6 +50,7 @@ class ManagerTermBaseCfg:
 		in the :class:`SceneEntityCfg` object.
 	"""
 
+
 ##
 # Action manager.
 ##
@@ -199,6 +200,7 @@ class EventTermCfg(ManagerTermBaseCfg):
 	curriculum_dependency: bool = False
 	curriculum_row_range: tuple[int, int] = (0,-1)
 	curriculum_col_range: tuple[int, int] = (0,-1)
+	"""Whether this term is applied only for certain terrain levels and types"""
 
 @configclass
 class RandomizationTermCfg(EventTermCfg):
@@ -249,7 +251,11 @@ class RewardTermCfg(ManagerTermBaseCfg):
 	has_two: bool = False
 	"""The term has two weights"""
 	weight2: float = MISSING
-
+	
+	curriculum_dependency: bool = False
+	curriculum_row_range: tuple[int, int] = (0,-1)
+	curriculum_col_range: tuple[int, int] = (0,-1)
+	"""Whether this term is applied only for certain terrain levels and types"""
 
 ##
 # Termination manager.
@@ -274,3 +280,8 @@ class TerminationTermCfg(ManagerTermBaseCfg):
 	Note:
 		These usually correspond to tasks that have a fixed time limit.
 	"""
+	
+	curriculum_dependency: bool = False
+	curriculum_row_range: tuple[int, int] = (0,-1)
+	curriculum_col_range: tuple[int, int] = (0,-1)
+	"""Whether this term is applied only for certain terrain levels and types"""

@@ -99,8 +99,8 @@ class CommandsCfg:
 		heading_control_stiffness=0.5,
 		debug_vis=DEBUG_VIS,
 		ranges=mdp.UniformVelocityCommandCfg.Ranges(
-			lin_vel_x=(-1.0, 1.0), lin_vel_y=(-1.0, 1.0), ang_vel_z=(-1.0, 1.0), heading=(-math.pi, math.pi)
-		),
+			lin_vel_x=(-1, 1), lin_vel_y=(-1, 1), ang_vel_z=(-math.pi/4, math.pi/4), heading=(-math.pi, math.pi)
+		)
 	)
 
 
@@ -227,6 +227,8 @@ class RewardsCfg:
 			"command_name": "base_velocity",
 			"threshold": 0.5,
 		},
+		curriculum_dependency = True,
+		curriculum_col_range = (0,0), # flat terrain
 	)
 
 

@@ -68,26 +68,28 @@ class EventManager(ManagerBase):
 	def __str__(self) -> str:
 		"""Returns: A string representation for event manager."""
 		msg = f"<EventManager> contains {len(self._mode_term_names)} active terms.\n"
-
+	
+		# create table for term information
+		table = PrettyTable()
+		table.title = f"Active Event Terms"
+		table.field_names = ["Index", "Name", "Mode", "Interval time range (s)", "Terrain lvs", "Terrain types"]
+		table.align["Name"] = "l"
+		table.align["Mode"] = "l"
+		table.align["Interval time range (s)"] = "r"
+		table.align["Terrain lvs"] = "r"
+		table.align["Terrain types"] = "r"
 		# add info on each mode
 		for mode in self._mode_term_names:
-			# create table for term information
-			table = PrettyTable()
-			table.title = f"Active Event Terms in Mode: '{mode}'"
-			# add table headers based on mode
-			if mode == "interval":
-				table.field_names = ["Index", "Name", "Interval time range (s)"]
-				table.align["Name"] = "l"
-				for index, (name, cfg) in enumerate(zip(self._mode_term_names[mode], self._mode_term_cfgs[mode])):
-					table.add_row([index, name, cfg.interval_range_s])
-			else:
-				table.field_names = ["Index", "Name"]
-				table.align["Name"] = "l"
-				for index, name in enumerate(self._mode_term_names[mode]):
-					table.add_row([index, name])
-			# convert table to string
-			msg += table.get_string()
-			msg += "\n"
+			for index, (name, cfg) in enumerate(zip(self._mode_term_names[mode], self._mode_term_cfgs[mode])):
+				table.add_row([
+					index, name, mode,
+					cfg.interval_range_s if mode == "interval" else "N/A",
+					cfg.curriculum_row_range if cfg.curriculum_dependency else "N/A",
+					cfg.curriculum_col_range if cfg.curriculum_dependency else "N/A",
+				])
+		# convert table to string
+		msg += table.get_string()
+		msg += "\n"
 
 		return msg
 
@@ -165,15 +167,15 @@ class EventManager(ManagerBase):
 			if term_cfg.curriculum_dependency:
 				if env_ids is None : env_ids = torch.arange(self._env.num_envs, device=self.device)
 				
-				row_r = term_cfg.curriculum_row_range
-				col_r = term_cfg.curriculum_col_range
+				terrain = self._env.scene.terrain
+				row_r = term_cfg.curriculum_row_range ; col_r = term_cfg.curriculum_col_range
 				lower_row, upper_row = (row_r[0], row_r[1] if row_r[1] != -1 else terrain.max_terrain_level-1)
 				lower_col, upper_col = (col_r[0], col_r[1] if col_r[1] != -1 else terrain.max_terrain_type-1)
-				
 				curriculum_ok = torch.logical_and( 
 					torch.logical_and(lower_row <= terrain.terrain_levels[env_ids], terrain.terrain_levels[env_ids] <= upper_row),
 					torch.logical_and(lower_col <= terrain.terrain_types[env_ids], terrain.terrain_types[env_ids] <= upper_col)
 				).nonzero().flatten()
+				
 				env_ids = env_ids[curriculum_ok]
 			
 			# call the event term
