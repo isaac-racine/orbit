@@ -208,7 +208,7 @@ class EventCfg:
 
 @configclass
 class ConstraintsCfg:
-	c_joint_acc = ConstraintTermCfg(func=mdp.c_joint_acc, params={"limval": 100}, pmax=0.25)
+	c_joint_acc = ConstraintTermCfg(func=mdp.c_joint_acc, params={"limval": 100.0}, pmax=1.0)
 
 
 @configclass
@@ -216,15 +216,14 @@ class RewardsCfg:
 	"""Reward terms for the MDP."""
 	
 	# level 0
-	r_velx_linmax = RewardTermCfg(func=mdp.r_velx_linmax, params={                                       "maxerr": 1.0                 }, weight=2.0,  curriculum_row_range = (0,0),  curriculum_dependency = True,)
 	
 	# level 1+
-	r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity", "maxerr": 1.3*MAX_COM_LINSPEED}, weight=1.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
-	r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity", "maxerr": MAX_COM_ANGSPEED    }, weight=0.75, curriculum_row_range = (1,-1), curriculum_dependency = True,) 
-	r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={                     "maxerr": 2.0                 }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
-	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                                 "maxerr": 1.3*math.pi         }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
+	r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COM_ANGSPEED    }, weight=0.75, curriculum_row_range = (1,-1), curriculum_dependency = True,) 
+	r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={                       "maxerr": 2.0                 }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
+	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                                   "maxerr": 1.3*math.pi         }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
 	
 	# any level
+	r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity", "maxerr": 1.3*MAX_COM_LINSPEED}, weight=1.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
 	#r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin,               params={                     "maxerr": 800                 }, weight=2.0)
 
 

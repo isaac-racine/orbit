@@ -199,7 +199,7 @@ class RLTaskEnv(BaseEnv, gym.Env):
 		self.reset_buf |= constraint_reset
 		self.reset_terminated |= constraint_reset
 		# -- reward computation
-		self.reward_buf = self.reward_manager.compute(dt=self.step_dt) * (1 - self.constraint_buf)
+		self.reward_buf = self.reward_manager.compute(dt=self.step_dt) * (1.0 - self.constraint_buf)
 
 		# -- reset envs that terminated/timed-out and log the episode information
 		reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
@@ -287,6 +287,7 @@ class RLTaskEnv(BaseEnv, gym.Env):
 		if not self._is_closed:
 			# destructor is order-sensitive
 			del self.command_manager
+			del self.constraint_manager
 			del self.reward_manager
 			del self.termination_manager
 			del self.curriculum_manager

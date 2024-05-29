@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Reward manager for computing reward signals for a given world."""
+"""Constraint manager for computing constraint signals for a given world."""
 
 from __future__ import annotations
 
@@ -50,11 +50,11 @@ class ConstraintManager(ManagerBase):
 		self._episode_c_max = dict()
 		for term_name in self._term_names:
 			self._episode_c_max[term_name] = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-		# create buffer for managing reward per environment
+		# create buffer for managing constraint per environment
 		self._delta_buf = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
 
 	def __str__(self) -> str:
-		"""Returns: A string representation for reward manager."""
+		"""Returns: A string representation for constraint manager."""
 		msg = f"<ConstrinatManager> contains {len(self._term_names)} active terms.\n"
 
 		# create table for term information
@@ -85,7 +85,7 @@ class ConstraintManager(ManagerBase):
 
 	@property
 	def active_terms(self) -> list[str]:
-		"""Name of active reward terms."""
+		"""Name of active constraint terms."""
 		return self._term_names
 
 	"""
@@ -120,20 +120,20 @@ class ConstraintManager(ManagerBase):
 		return extras
 
 	def compute(self, dt: float) -> torch.Tensor:
-		"""Computes the reward signal as a weighted sum of individual terms.
+		"""Computes the constraint signal as a weighted sum of individual terms.
 
-		This function calls each reward term managed by the class and adds them to compute the net
-		reward signal. It also updates the episodic sums corresponding to individual reward terms.
+		This function calls each constraint term managed by the class and adds them to compute the net
+		constraint signal. It also updates the episodic sums corresponding to individual constraint terms.
 
 		Args:
 			dt: The time-step interval of the environment.
 
 		Returns:
-			The net reward signal of shape (num_envs,).
+			The net constraint signal of shape (num_envs,).
 		"""
 		# reset computation
 		self._delta_buf[:] = 0.0
-		# iterate over all the reward terms
+		# iterate over all the constraint terms
 		for term_name, term_cfg in zip(self._term_names, self._term_cfgs):
 			# compute term's value
 			value = torch.clip(term_cfg.func(self._env, **term_cfg.params), min=0)
@@ -157,6 +157,7 @@ class ConstraintManager(ManagerBase):
 			
 			# compute delta prob
 			delta = term_cfg.pmax * torch.clip(value / valuemax, min=0,max=1)
+			delta[:] = torch.where(torch.isnan(delta), 0.0, delta) # happens when value=0 and valuemax=0
 			self._delta_buf[:] = torch.where(self._delta_buf > delta, self._delta_buf, delta)
 		
 		return self._delta_buf
