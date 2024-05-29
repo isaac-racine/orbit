@@ -71,13 +71,15 @@ def terrain_levels_vel2(
 	terrain: TerrainImporter = env.scene.terrain
 	command = env.command_manager.get_command(command_name)
 	
+	ep_time = env.episode_length_buf[env_ids]*env.step_dt
+	
 	# straight line distance the robot should have walked if it respected the command
-	required_distance = torch.norm(command[env_ids, :2], dim=1) * env.episode_length_buf[env_ids]*env.step_dt
+	required_distance = torch.norm(command[env_ids, :2], dim=1) * ep_time
 	# compute the distance the robot walked
 	distance = torch.norm(asset.data.root_pos_w[env_ids, :2] - env.scene.env_origins[env_ids, :2], dim=1)
 	
 	# robots that walked far enough progress to harder terrains
-	move_up = distance >= 0.95*terrain.cfg.terrain_generator.size[0]/2
+	move_up = torch.logical_and(distance >= 0.95*terrain.cfg.terrain_generator.size[0]/2, ep_time > 1.0)
 	# robots that walked less than half of their required distance go to simpler terrains
 	move_down = distance < 0.5*required_distance
 	move_down *= ~move_up

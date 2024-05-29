@@ -645,35 +645,6 @@ def r_vel_xy_exp(
 
 
 
-# sparse task penalties :  -----------------------------------------------------------------------------------------------------------------
-# [-1,0] range : -1 when bad, 0 when good
-def p_joint_val_sparse(env: RLTaskEnv, treshold: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	asset: Articulation = env.scene[asset_cfg.name]
-	isbad = torch.linalg.norm( getattr(asset.data, val_name)[:, asset_cfg.joint_ids], dim=1 ) > treshold
-	return -isbad.float()
-def p_joint_acc_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	return p_joint_val_sparse(env, treshold, "joint_acc", asset_cfg)
-def p_joint_vel_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	return p_joint_val_sparse(env, treshold, "joint_vel", asset_cfg)
-def p_joint_torque_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	return p_joint_val_sparse(env, treshold, "applied_torque", asset_cfg)
-
-def p_contact_sparse(env: RLTaskEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
-	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-	
-	isbad = torch.amax(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], dim=-1) > 0.01
-	return -isbad.float()
-
-
-
-# sparse task rewards :  -----------------------------------------------------------------------------------------------------------------
-# [0,1] range : 0 when bad, 1 when good
-def r_alive_sparse(env: RLTaskEnv) -> torch.Tensor:
-	"""Reward for being alive."""
-	return (~env.termination_manager.terminated).float()
-
-
-
 # bi-linear task reward / penalties : ---------------------------------------------------------------------------------------------------------
 # [-1,1] range : [-1,0] is |err|>minerr, [0,1] is |err|<minerr, -1 is maxerr, 1 is err=0
 # form :
@@ -729,7 +700,41 @@ def rp_heading_bilin(
 
 
 
-# linear task rewards : ---------------------------------------------------------------------------------------------------------
+# sparse task penalties :  -----------------------------------------------------------------------------------------------------------------
+# [-1,0] range : -1 when bad, 0 when good
+def p_joint_val_sparse(env: RLTaskEnv, treshold: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: Articulation = env.scene[asset_cfg.name]
+	isbad = torch.linalg.norm( getattr(asset.data, val_name)[:, asset_cfg.joint_ids], dim=1 ) > treshold
+	return -isbad.float()
+def p_joint_acc_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return p_joint_val_sparse(env, treshold, "joint_acc", asset_cfg)
+def p_joint_vel_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return p_joint_val_sparse(env, treshold, "joint_vel", asset_cfg)
+def p_joint_torque_sparse(env: RLTaskEnv, treshold: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	return p_joint_val_sparse(env, treshold, "applied_torque", asset_cfg)
+
+def p_contact_sparse(env: RLTaskEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	isbad = torch.amax(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], dim=-1) > 0.01
+	return -isbad.float()
+
+
+
+# sparse task rewards :  -----------------------------------------------------------------------------------------------------------------
+# [0,1] range : 0 when bad, 1 when good
+def r_alive_sparse(env: RLTaskEnv) -> torch.Tensor:
+	return (~env.termination_manager.terminated).float()
+
+def r_contact_sparse(env: RLTaskEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	isok = torch.amax(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], dim=-1) < 1e-3
+	return isok.float()
+
+
+
+# linear task rewards (rewards err closer to 0): ---------------------------------------------------------------------------------------------------------
 # [0,1] range : 0 is maxerr, 1 is err=0
 # form :
 #	err = clip(|err|)
@@ -759,28 +764,54 @@ def r_flat_orientation_lin(env: RLTaskEnv, maxerr: float=2.0, asset_cfg: SceneEn
 	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b, dim=-1)
 	err = torch.linalg.norm(env.nZ - dir_g, dim=-1) # 2 at max
 	return lin(err, maxerr)
-
 def r_joint_pose_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	asset: Articulation = env.scene[asset_cfg.name]
 	
 	diff = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
 	err = torch.linalg.norm(diff, dim=-1)
 	return lin(err, maxerr)
+def r_contact_dist_lin(env: RLTaskEnv, maxerr: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	err = torch.linalg.norm(contact_sensor.data.current_contact_distance[:,sensor_cfg.body_ids], dim=-1)
+	return lin(err, maxerr)
 
-def r_vel_xy_lin(
-	env: RLTaskEnv, maxerr: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
+def r_com_linvel_lin(env: RLTaskEnv, maxerr: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	asset: RigidObject = env.scene[asset_cfg.name]
 	command: torch.Tensor = env.command_manager.get_command(command_name)
 	
 	diff = command[:,:2] - asset.data.root_lin_vel_b[:, :2]
 	err = torch.linalg.norm(diff, dim=-1)
 	return lin(err, maxerr)
-def r_heading_lin(
-	env: RLTaskEnv, command_name: str, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
+def r_com_angvel_lin(env: RLTaskEnv, maxerr: float, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	command: torch.Tensor = env.command_manager.get_command(command_name)
+	
+	diff = command[:, 2] - asset.data.root_ang_vel_b[:, 2]
+	err = torch.abs(diff)
+	return lin(err, maxerr)
+def r_heading_lin(env: RLTaskEnv, command_name: str, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	asset: RigidObject = env.scene[asset_cfg.name]
 	command: torch.Tensor = env.command_manager.get_command(command_name)
 	
 	err = torch.abs(command[:, 2]) # pi at max
 	return lin(err, maxerr)
+
+
+
+# linear max task rewards (rewards err closer to errmax): ---------------------------------------------------------------------------------------------------------
+# [0,1] range : 0 is err=0, 1 is err=errmax
+# form :
+#	err = clip(|err|)
+# 	rew = err / maxerr
+
+def linmax(err: float, maxerr: float):
+	# err should be >0
+	err = torch.clip(err, max=maxerr)
+	return err / maxerr
+
+def r_velx_linmax(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	
+	err = torch.abs(asset.data.root_lin_vel_w[:, 0])
+	return linmax(err, maxerr) 

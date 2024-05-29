@@ -168,38 +168,3 @@ def illegal_contact(env: RLTaskEnv, threshold: float, sensor_cfg: SceneEntityCfg
 		torch.max(torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0] > threshold, dim=1
 	)
 
-
-"""
-Constraint terminations
-"""
-
-
-def constraint(err: float, errmax: float, pmax: float):
-	prob = torch.clip((err-errmax)/errmax, min=0,max=1) * pmax # there is a chance the termination will not happen
-	return torch.rand_like(prob) <= prob
-
-def c_joint_val_err(env: RLTaskEnv, maxerr: float, maxprob: float, val_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	asset: Articulation = env.scene[asset_cfg.name]
-	
-	data = getattr(asset.data, val_name)[:, asset_cfg.joint_ids]
-	err = torch.linalg.norm(data, dim=-1)
-	return constraint(err, maxerr, maxprob)
-def c_joint_acc_err(env: RLTaskEnv, maxerr: float, maxprob: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	return c_joint_val_err(env, maxerr, maxprob, "joint_acc", asset_cfg)
-def c_joint_vel_err(env: RLTaskEnv, maxerr: float, maxprob: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	return c_joint_val_err(env, maxerr, maxprob, "joint_vel", asset_cfg)
-def c_joint_torque_err(env: RLTaskEnv, maxerr: float, maxprob: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	return c_joint_val_err(env, maxerr, maxprob, "applied_torque", asset_cfg)
-
-def c_base_orientation_err(env: RLTaskEnv, maxerr: float, maxprob: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-	asset: RigidObject = env.scene[asset_cfg.name]
-	
-	dir_g = torch.nn.functional.normalize(asset.data.projected_gravity_b, dim=-1)
-	err = torch.linalg.norm(env.nZ - dir_g, dim=-1) # 2 at max
-	return constraint(err, maxerr, maxprob)
-
-def c_contact_err(env: RLTaskEnv, maxprob: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
-	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-	
-	isbad = torch.amax(contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids], dim=-1) > 0.01
-	return constraint(isbad.float(), 0.1, maxprob)

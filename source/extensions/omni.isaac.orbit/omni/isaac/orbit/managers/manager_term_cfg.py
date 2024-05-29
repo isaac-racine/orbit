@@ -257,6 +257,33 @@ class RewardTermCfg(ManagerTermBaseCfg):
 	curriculum_col_range: tuple[int, int] = (0,-1)
 	"""Whether this term is applied only for certain terrain levels and types"""
 
+
+##
+# Constraint manager.
+##
+
+
+@configclass
+class ConstraintTermCfg(ManagerTermBaseCfg):
+	"""Configuration for a reward term."""
+
+	func: Callable[..., torch.Tensor] = MISSING
+	"""The name of the function to be called.
+
+	This function should take the environment object and any other parameters
+	as input and return the reward signals as torch float tensors of
+	shape (num_envs,).
+	"""
+
+	pmax: float = 1.0
+	
+	
+	curriculum_dependency: bool = False
+	curriculum_row_range: tuple[int, int] = (0,-1)
+	curriculum_col_range: tuple[int, int] = (0,-1)
+	"""Whether this term is applied only for certain terrain levels and types"""
+
+
 ##
 # Termination manager.
 ##

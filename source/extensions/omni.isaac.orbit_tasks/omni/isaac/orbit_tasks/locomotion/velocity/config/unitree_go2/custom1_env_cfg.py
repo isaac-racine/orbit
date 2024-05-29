@@ -9,13 +9,7 @@ from dataclasses import MISSING
 import omni.isaac.orbit.sim as sim_utils
 from omni.isaac.orbit.assets import ArticulationCfg, AssetBaseCfg
 from omni.isaac.orbit.envs import RLTaskEnvCfg
-from omni.isaac.orbit.managers import CurriculumTermCfg
-from omni.isaac.orbit.managers import EventTermCfg
-from omni.isaac.orbit.managers import ObservationGroupCfg
-from omni.isaac.orbit.managers import ObservationTermCfg
-from omni.isaac.orbit.managers import RewardTermCfg
-from omni.isaac.orbit.managers import SceneEntityCfg
-from omni.isaac.orbit.managers import TerminationTermCfg
+from omni.isaac.orbit.managers import CurriculumTermCfg, EventTermCfg, ObservationGroupCfg,ObservationTermCfg, ConstraintTermCfg, RewardTermCfg, SceneEntityCfg, TerminationTermCfg
 from omni.isaac.orbit.scene import InteractiveSceneCfg
 from omni.isaac.orbit.sensors import ContactSensorCfg, RayCasterCfg, patterns, CameraCfg
 from omni.isaac.orbit.terrains import TerrainImporterCfg
@@ -31,11 +25,14 @@ from omni.isaac.orbit.terrains.config.rough import VEL_CUSTOM_TERRAIN_CFG, ROUGH
 from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
 
 
-DEBUG_VIS=True
-EPISODE_LENGTH=60.0
+DEBUG_VIS=False
+EPISODE_LENGTH=40.0
 
-UNWANTED_CONTACT_BODIES=[".*_hip","Head_.*", ".*_thigh",".*_calf"]
+UNWANTED_CONTACT_BODIES=["base",".*_hip","Head_.*", ".*_thigh",".*_calf"]
+ILLEGAL_CONTACT_BODIES=["base", "Head_.*"]
 MAX_PUSHSPEED = 1.5
+MAX_COM_LINSPEED = 1.0
+MAX_COM_ANGSPEED = math.pi/2
 
 
 ##
@@ -99,7 +96,10 @@ class CommandsCfg:
 		heading_control_stiffness=0.5,
 		debug_vis=DEBUG_VIS,
 		ranges=mdp.UniformVelocityCommandCfg.Ranges(
-			lin_vel_x=(-1, 1), lin_vel_y=(-1, 1), ang_vel_z=(-math.pi/4, math.pi/4), heading=(-math.pi, math.pi)
+			lin_vel_x=(-MAX_COM_LINSPEED, MAX_COM_LINSPEED),
+			lin_vel_y=(-MAX_COM_LINSPEED, MAX_COM_LINSPEED),
+			ang_vel_z=(-MAX_COM_ANGSPEED, MAX_COM_ANGSPEED),
+			heading=(-math.pi, math.pi)
 		)
 	)
 
@@ -198,38 +198,34 @@ class EventCfg:
 	push_robot = EventTermCfg(
 		func=mdp.push_by_setting_velocity,
 		mode="interval",
+		interval_range_s=(3.0, min(5.0, EPISODE_LENGTH)),
+		params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}},
 		curriculum_dependency = True,
 		curriculum_row_range = (1,-1), # starting from 2nd level
 		curriculum_col_range = (1,1), # random boxes ground
-		interval_range_s=(3.0, min(5.0, EPISODE_LENGTH)),
-		params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}},
 	)
+
+
+@configclass
+class ConstraintsCfg:
+	c_joint_acc = ConstraintTermCfg(func=mdp.c_joint_acc, params={"limval": 100}, pmax=0.25)
+
 
 @configclass
 class RewardsCfg:
 	"""Reward terms for the MDP."""
-
-	# -- task
-	track_lin_vel_xy_exp = RewardTermCfg(func=mdp.track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
-	track_ang_vel_z_exp = RewardTermCfg(func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)})
 	
-	# -- penalties
-	lin_vel_z_l2 = RewardTermCfg(func=mdp.lin_vel_z_l2, weight=-2.0)
-	ang_vel_xy_l2 = RewardTermCfg(func=mdp.ang_vel_xy_l2, weight=-0.05)
-	dof_torques_l2 = RewardTermCfg(func=mdp.joint_torques_l2, weight=-0.0002)
-	dof_acc_l2 = RewardTermCfg(func=mdp.joint_acc_l2, weight=-2.5e-7)
-	action_rate_l2 = RewardTermCfg(func=mdp.action_rate_l2, weight=-0.01)
-	feet_air_time = RewardTermCfg(
-		func=mdp.feet_air_time,
-		weight=0.01,
-		params={
-			"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot"),
-			"command_name": "base_velocity",
-			"threshold": 0.5,
-		},
-		curriculum_dependency = True,
-		curriculum_col_range = (0,0), # flat terrain
-	)
+	# level 0
+	r_velx_linmax = RewardTermCfg(func=mdp.r_velx_linmax, params={                                       "maxerr": 1.0                 }, weight=2.0,  curriculum_row_range = (0,0),  curriculum_dependency = True,)
+	
+	# level 1+
+	r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity", "maxerr": 1.3*MAX_COM_LINSPEED}, weight=1.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
+	r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity", "maxerr": MAX_COM_ANGSPEED    }, weight=0.75, curriculum_row_range = (1,-1), curriculum_dependency = True,) 
+	r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={                     "maxerr": 2.0                 }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
+	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                                 "maxerr": 1.3*math.pi         }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
+	
+	# any level
+	#r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin,               params={                     "maxerr": 800                 }, weight=2.0)
 
 
 @configclass
@@ -238,9 +234,16 @@ class TerminationsCfg:
 	
 	out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
+	
 	base_contact = TerminationTermCfg(
 		func=mdp.illegal_contact,
-		params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
+		params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
+	)
+	contact_full = TerminationTermCfg(
+		func=mdp.illegal_contact,
+		params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=UNWANTED_CONTACT_BODIES), "threshold": 1.0},
+		curriculum_dependency = True,
+		curriculum_row_range = (0,0), # only first level
 	)
 
 
@@ -267,6 +270,7 @@ class UnitreeGo2VelCustomEnvCfg(RLTaskEnvCfg):
 	actions: ActionsCfg = ActionsCfg()
 	commands: CommandsCfg = CommandsCfg()
 	# MDP settings
+	constraints: ConstraintsCfg = ConstraintsCfg()
 	rewards: RewardsCfg = RewardsCfg()
 	terminations: TerminationsCfg = TerminationsCfg()
 	events: EventCfg = EventCfg()

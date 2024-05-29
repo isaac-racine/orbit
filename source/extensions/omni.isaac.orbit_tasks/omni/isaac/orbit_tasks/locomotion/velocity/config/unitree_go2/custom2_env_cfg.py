@@ -320,12 +320,12 @@ class RewardsCfg:
 	#rp_heading_bilin = RewardTermCfg(func=mdp.rp_heading_bilin, has_two=True, params={"command_name": "base_velocity", "minerr": pi/2, "maxerr": pi          }, weight=1, weight2=1)
 	
 	
-	r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin, params={                             "maxerr": 500             }, weight=1)
-	r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={               "maxerr": 2               }, weight=1)
-	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                           "maxerr": pi*1.5          }, weight=1)
-	
-	r_vel_xy_lin = RewardTermCfg(func=mdp.r_vel_xy_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COMSPEED*1.5}, weight=1)
-	r_heading_lin = RewardTermCfg(func=mdp.r_heading_lin, params={"command_name": "base_velocity", "maxerr": pi              }, weight=1)
+	#r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin, params={                             "maxerr": 500             }, weight=1)
+	#r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={               "maxerr": 2               }, weight=1)
+	#r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                           "maxerr": pi*1.5          }, weight=1)
+	#
+	#r_vel_xy_lin = RewardTermCfg(func=mdp.r_vel_xy_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COMSPEED*1.5}, weight=1)
+	#r_heading_lin = RewardTermCfg(func=mdp.r_heading_lin, params={"command_name": "base_velocity", "maxerr": pi              }, weight=1)
 	
 
 @configclass
