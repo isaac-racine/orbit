@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from . import agents, flat_env_cfg, rough_env_cfg, custom1_env_cfg, custom2_env_cfg
+from . import agents, flat_env_cfg, rough_env_cfg, custom1_env_cfg, custom2_env_cfg, custom_multi_env_cfg
 
 ##
 # Register Gym environments.
@@ -60,20 +60,29 @@ gym.register(
 
 # track velocity command (with speed)
 gym.register(
-    id="Isaac-Velocity-Custom-Unitree-Go2-v1",
+    id="Isaac-Velocity-CustomFlat",
     entry_point="omni.isaac.orbit.envs:RLTaskEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": custom1_env_cfg.UnitreeGo2VelCustomEnvCfg,
+        "env_cfg_entry_point": custom_multi_env_cfg.FlatCustomEnvCfg,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom1PPORunnerCfg,
     },
 )
 gym.register(
-    id="Isaac-Velocity-Custom-Unitree-Go2-PlayControl-v1",
+    id="Isaac-Velocity-CustomCurriculum",
     entry_point="omni.isaac.orbit.envs:RLTaskEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": custom1_env_cfg.UnitreeGo2VelCustomEnvCfg_PLAYCONTROL,
+        "env_cfg_entry_point": custom_multi_env_cfg.CurriculumCustomEnvCfg,
+        "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom1PPORunnerCfg,
+    },
+)
+gym.register(
+    id="Isaac-Velocity-Custom-PlayControl",
+    entry_point="omni.isaac.orbit.envs:RLTaskEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": custom_multi_env_cfg.CustomEnvCfg_PlayControl,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2VelCustom1PPORunnerCfg,
     },
 )

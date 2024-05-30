@@ -276,12 +276,14 @@ class ConstraintTermCfg(ManagerTermBaseCfg):
 	"""
 
 	pmax: float = 1.0
-	
+	"""Max termination probability"""
+	tau: float = 0.95
+	"""Decay rate used in the exponential moving average computation of cmax."""
 	
 	curriculum_dependency: bool = False
 	curriculum_row_range: tuple[int, int] = (0,-1)
 	curriculum_col_range: tuple[int, int] = (0,-1)
-	"""Whether this term is applied only for certain terrain levels and types"""
+	"""Whether this term is applied only for certain terrain levels and types."""
 
 
 ##

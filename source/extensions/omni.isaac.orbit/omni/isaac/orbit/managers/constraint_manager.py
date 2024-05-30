@@ -46,11 +46,12 @@ class ConstraintManager(ManagerBase):
 			env: The environment instance.
 		"""
 		super().__init__(cfg, env)
-		# prepare extra info to store individual constraint term information
-		self._episode_c_max = dict()
-		for term_name in self._term_names:
-			self._episode_c_max[term_name] = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-		# create buffer for managing constraint per environment
+		# prepare extra buffers
+		self._c_max = dict()
+		for term_name in self._term_names : self._c_max[term_name] = 0.0#torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+		self._prob_buf = dict()
+		for term_name in self._term_names : self._prob_buf[term_name] = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+		# create buffer for managing termination probability per environment
 		self._delta_buf = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
 
 	def __str__(self) -> str:
@@ -60,16 +61,17 @@ class ConstraintManager(ManagerBase):
 		# create table for term information
 		table = PrettyTable()
 		table.title = "Active Constraint Terms"
-		table.field_names = ["Index", "Name", "Max. prob.", "Terrain lvs", "Terrain types"]
+		table.field_names = ["Index", "Name", "Max. prob.", "Decay rate", "Terrain lvs", "Terrain types"]
 		# set alignment of table columns
 		table.align["Name"] = "l"
 		table.align["Max. prob."] = "r"
+		table.align["Decay rate"] = "r"
 		table.align["Terrain lvs"] = "r"
 		table.align["Terrain types"] = "r"
 		# add info on each term
 		for index, (name, term_cfg) in enumerate(zip(self._term_names, self._term_cfgs)):
 			table.add_row([
-				index, name, term_cfg.pmax,
+				index, name, term_cfg.pmax, term_cfg.tau,
 				term_cfg.curriculum_row_range if term_cfg.curriculum_dependency else "N/A",
 				term_cfg.curriculum_col_range if term_cfg.curriculum_dependency else "N/A",
 			])
@@ -93,10 +95,10 @@ class ConstraintManager(ManagerBase):
 	"""
 
 	def reset(self, env_ids: Sequence[int] | None = None) -> dict[str, torch.Tensor]:
-		"""Returns the episodic max constraint.
+		"""Returns the episodic info.
 
 		Args:
-			env_ids: The environment ids for which the episodic max constraint terms is to be returned. Defaults to all the environment ids.
+			env_ids: The environment ids for which the episodic info is to be returned. Defaults to all the environment ids.
 
 		Returns:
 			Dictionary of episodic max constraint terms.
@@ -109,13 +111,13 @@ class ConstraintManager(ManagerBase):
 		for term_name in self._term_names:
 			# store information
 			# r_1 + r_2 + ... + r_n
-			episodic_sum_avg = torch.mean(self._episode_c_max[term_name][env_ids])
-			extras["Episode Constraint/" + term_name] = episodic_sum_avg / self._env.max_episode_length_s
-			# reset episodic sum
-			self._episode_c_max[term_name][env_ids] = 0.0
+			extras["Episode Termination prob./" + term_name] = torch.mean(self._prob_buf[term_name][env_ids])
+			extras["Episode Max constraint violation/" + term_name] = self._c_max[term_name]
+			# reset buffers
+			self._c_max[term_name] = 0.0
+			
 		# reset all the constraint terms
-		for term_cfg in self._class_term_cfgs:
-			term_cfg.func.reset(env_ids=env_ids)
+		for term_cfg in self._class_term_cfgs : term_cfg.func.reset(env_ids=env_ids)
 		# return logged information
 		return extras
 
@@ -135,7 +137,7 @@ class ConstraintManager(ManagerBase):
 		self._delta_buf[:] = 0.0
 		# iterate over all the constraint terms
 		for term_name, term_cfg in zip(self._term_names, self._term_cfgs):
-			# compute term's value
+			# compute term's constraint violation
 			value = torch.clip(term_cfg.func(self._env, **term_cfg.params), min=0)
 			
 			# check curriculum
@@ -151,14 +153,16 @@ class ConstraintManager(ManagerBase):
 				
 				value = torch.where(curriculum_ok, value, 0.0)
 			
-			# update max (no moving average)
-			valuemax = self._episode_c_max[term_name]
-			valuemax[:] = torch.where(valuemax > value, valuemax, value)
+			# update max constraint violation with moving exponential average. Average is across all envs for each constraint separately
+			cmax = torch.amax(value, dim=0)
+			self._c_max[term_name] = term_cfg.tau * self._c_max[term_name] + (1.0 - term_cfg.tau) * cmax
 			
-			# compute delta prob
-			delta = term_cfg.pmax * torch.clip(value / valuemax, min=0,max=1)
-			delta[:] = torch.where(torch.isnan(delta), 0.0, delta) # happens when value=0 and valuemax=0
-			self._delta_buf[:] = torch.where(self._delta_buf > delta, self._delta_buf, delta)
+			# compute termination probability for the constraint
+			self._prob_buf[term_name][:] = term_cfg.pmax * torch.clip(value / self._c_max[term_name], min=0,max=1)
+			self._prob_buf[term_name][:] = torch.where(torch.isnan(self._prob_buf[term_name]), 0.0, self._prob_buf[term_name]) # happens when 0/0 
+			
+			# update max termination probability
+			self._delta_buf[:] = torch.where(self._delta_buf > self._prob_buf[term_name], self._delta_buf, self._prob_buf[term_name])
 		
 		return self._delta_buf
 

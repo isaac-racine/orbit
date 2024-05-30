@@ -208,7 +208,7 @@ class EventCfg:
 
 @configclass
 class ConstraintsCfg:
-	c_joint_acc = ConstraintTermCfg(func=mdp.c_joint_acc, params={"limval": 100.0}, pmax=1.0)
+	c_joint_acc = ConstraintTermCfg(func=mdp.c_joint_acc, params={"limval": 100.0}, pmax=0.25)
 
 
 @configclass
@@ -216,6 +216,7 @@ class RewardsCfg:
 	"""Reward terms for the MDP."""
 	
 	# level 0
+	r_alive_sparse = RewardTermCfg(func=mdp.r_alive_sparse,                                                                                 weight=0.5,  curriculum_row_range = (0,0),  curriculum_dependency = True,)
 	
 	# level 1+
 	r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COM_ANGSPEED    }, weight=0.75, curriculum_row_range = (1,-1), curriculum_dependency = True,) 
@@ -223,7 +224,7 @@ class RewardsCfg:
 	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                                   "maxerr": 1.3*math.pi         }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
 	
 	# any level
-	r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity", "maxerr": 1.3*MAX_COM_LINSPEED}, weight=1.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
+	r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity", "maxerr": 1.3*MAX_COM_LINSPEED}, weight=1.5)
 	#r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin,               params={                     "maxerr": 800                 }, weight=2.0)
 
 
@@ -234,16 +235,16 @@ class TerminationsCfg:
 	out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
 	
-	base_contact = TerminationTermCfg(
-		func=mdp.illegal_contact,
-		params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
-	)
-	contact_full = TerminationTermCfg(
-		func=mdp.illegal_contact,
-		params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=UNWANTED_CONTACT_BODIES), "threshold": 1.0},
-		curriculum_dependency = True,
-		curriculum_row_range = (0,0), # only first level
-	)
+	#base_contact = TerminationTermCfg(
+	#	func=mdp.illegal_contact,
+	#	params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
+	#)
+	#contact_full = TerminationTermCfg(
+	#	func=mdp.illegal_contact,
+	#	params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=UNWANTED_CONTACT_BODIES), "threshold": 1.0},
+	#	curriculum_dependency = True,
+	#	curriculum_row_range = (0,0), # only first level
+	#)
 
 
 @configclass

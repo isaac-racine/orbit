@@ -92,3 +92,12 @@ class ContactSensorData:
     Note:
         If the :attr:`ContactSensorCfg.track_air_time` is False, then this quantity is None.
     """
+
+    current_contact_distance: torch.Tensor | None = None
+    """Distance spent (in m) in contact since the last contact.
+
+    Shape is (N, B), where N is the number of sensors and B is the number of bodies in each sensor.
+
+    Note:
+        If the :attr:`ContactSensorCfg.track_pose` is False, then this quantity is None.
+    """

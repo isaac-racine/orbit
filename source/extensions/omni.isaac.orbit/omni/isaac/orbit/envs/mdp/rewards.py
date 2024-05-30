@@ -758,6 +758,23 @@ def r_joint_vel_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = S
 def r_joint_torque_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	return r_joint_val_lin(env, maxerr, "applied_torque", asset_cfg)
 
+def r_action_rate_lin(env: RLTaskEnv, maxerr: float) -> torch.Tensor:
+	diff = env.action_manager.action - env.action_manager.prev_action
+	err = torch.linalg.norm(diff, dim=-1)
+	return lin(err, maxerr)	
+
+def r_velz_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: RigidObject = env.scene[asset_cfg.name]
+	err = torch.abs(asset.data.root_lin_vel_b[:, 2])
+	
+	return lin(err, maxerr)
+def r_acc_lin(env: RLTaskEnv, maxerr: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+	asset: Articulation = env.scene[asset_cfg.name]
+	
+	data = asset.data.body_lin_acc_w[:, asset_cfg.body_ids, :]
+	err = torch.sum(torch.norm(data, dim=-1), dim=-1)
+	return lin(err, maxerr)
+
 def r_flat_orientation_lin(env: RLTaskEnv, maxerr: float=2.0, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	asset: RigidObject = env.scene[asset_cfg.name]
 	
