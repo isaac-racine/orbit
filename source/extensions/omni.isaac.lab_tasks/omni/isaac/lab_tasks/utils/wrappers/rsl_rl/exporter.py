@@ -15,15 +15,14 @@ def export_policy_as_jit(actor_critic: object, path: str, filename="policy.pt"):
         actor_critic: The actor-critic torch module.
         path: The path to the saving directory.
         filename: The name of exported JIT file. Defaults to "policy.pt".
-
-    Reference:
-        https://github.com/leggedrobotics/legged_gym/blob/master/legged_gym/utils/helpers.py#L180
     """
     policy_exporter = _TorchPolicyExporter(actor_critic)
     policy_exporter.export(path, filename)
 
 
-def export_policy_as_onnx(actor_critic: object, path: str, filename="policy.onnx", verbose=False):
+def export_policy_as_onnx(
+    actor_critic: object, path: str, normalizer: object | None = None, filename="policy.onnx", verbose=False
+):
     """Export policy into a Torch ONNX file.
 
     Args:
@@ -44,11 +43,7 @@ Helper Classes - Private.
 
 
 class _TorchPolicyExporter(torch.nn.Module):
-    """Exporter of actor-critic into JIT file.
-
-    Reference:
-        https://github.com/leggedrobotics/legged_gym/blob/master/legged_gym/utils/helpers.py#L193
-    """
+    """Exporter of actor-critic into JIT file."""
 
     def __init__(self, actor_critic):
         super().__init__()

@@ -18,7 +18,7 @@ from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import BaseEnv
+    from omni.isaac.lab.envs import ManagerBasedEnv
 
 	from .commands_cfg import NormalVelocityCommandCfg, UniformVelocityCommandCfg, UserVelocityCommandCfg
 
@@ -44,8 +44,8 @@ class UniformVelocityCommand(CommandTerm):
 	cfg: UniformVelocityCommandCfg
 	"""The configuration of the command generator."""
 
-	def __init__(self, cfg: UniformVelocityCommandCfg, env: BaseEnv):
-		"""Initialize the command generator.
+    def __init__(self, cfg: UniformVelocityCommandCfg, env: ManagerBasedEnv):
+        """Initialize the command generator.
 
 		Args:
 			cfg: The configuration of the command generator.
