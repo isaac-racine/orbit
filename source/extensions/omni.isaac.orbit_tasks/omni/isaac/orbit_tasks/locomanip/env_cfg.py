@@ -12,17 +12,18 @@ from omni.isaac.orbit.envs import RLTaskEnvCfg
 from omni.isaac.orbit.managers import CurriculumTermCfg, EventTermCfg, ObservationGroupCfg,ObservationTermCfg, ConstraintTermCfg, RewardTermCfg, SceneEntityCfg, TerminationTermCfg
 from omni.isaac.orbit.scene import InteractiveSceneCfg
 from omni.isaac.orbit.sensors import ContactSensorCfg, RayCasterCfg, patterns, CameraCfg
+from omni.isaac.orbit.sensors.frame_transformer.frame_transformer_cfg import FrameTransformerCfg
 from omni.isaac.orbit.terrains import TerrainImporterCfg
 from omni.isaac.orbit.utils import configclass
 from omni.isaac.orbit.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-import omni.isaac.orbit_tasks.locomotion.velocity.mdp as mdp
+from . import mdp
 
 ##
 # Pre-defined configs
 ##
 from omni.isaac.orbit.terrains.config.rough import VEL_CUSTOM_TERRAIN_CFG, ROUGH_TERRAINS_CFG
-from omni.isaac.orbit_assets.unitree import UNITREE_GO2_CFG
+from omni.isaac.orbit_assets.unitree import UNITREE_GO2_Z1_CFG
 
 
 DEBUG_VIS=False
@@ -30,12 +31,15 @@ DEBUG_VIS=False
 FLAT_EPISODE_LENGTH=10.0
 CURRICULUM_EPISODE_LENGTH=40.0
 
-UNWANTED_CONTACT_BODIES_H=[".*_hip", ".*_thigh", "base", "Head_.*"]
+UNWANTED_CONTACT_BODIES_H=[".*_hip", ".*_thigh", "base", "Head_.*", "gripper.*"]
 UNWANTED_CONTACT_BODIES_L=[".*_calf"]
-ILLEGAL_CONTACT_BODIES=["base", "Head_.*"]
+ILLEGAL_CONTACT_BODIES=["base", "Head_.*", "gripper.*"]
+
 MAX_PUSHSPEED = 1.5
 MAX_COM_LINSPEED = 1.5
 MAX_COM_ANGSPEED = math.pi/2
+
+POS_RESAMPLING_RANGE = (3.0, 5.0)
 
 
 ##
@@ -85,7 +89,7 @@ class VelSceneCfg(InteractiveSceneCfg):
 	# ground terrain
 	terrain: TerrainImporterCfg = MISSING
 	# robots
-	robot: ArticulationCfg = UNITREE_GO2_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+	robot: ArticulationCfg = UNITREE_GO2_Z1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 	# sensors
 	height_scanner = RayCasterCfg(
 		prim_path="{ENV_REGEX_NS}/Robot/base",
@@ -96,6 +100,23 @@ class VelSceneCfg(InteractiveSceneCfg):
 		mesh_prim_paths=["/World/ground"],
 	)
 	contact_sensor = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True, track_pose=True)
+	ee_frame = FrameTransformerCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        debug_vis=False,
+        target_frames=[
+			FrameTransformerCfg.FrameCfg(
+				prim_path="{ENV_REGEX_NS}/Robot/gripperStator",
+				name="end_effector",
+			),
+		],
+	)
+	#feet_frame = FrameTransformerCfg(
+    #    prim_path="{ENV_REGEX_NS}/Robot/base",
+    #    debug_vis=DEBUG_VIS,
+    #    target_frames=[
+	#		FrameTransformerCfg.FrameCfg(prim_path=f"{ENV_REGEX_NS}/Robot/{foot_name}", name=foot_name) for foot_name in ["FL_foot","FR_foot","RL_foot","RR_foot"]]
+	#	],
+	#)
 
 ##
 # MDP settings
@@ -120,12 +141,22 @@ class CommandsCfg:
 			heading=(-math.pi, math.pi)
 		)
 	)
+	ee_pos = mdp.UniformPoseCommandCfg(
+		asset_name="robot",
+		body_name="gripperStator",
+		resampling_time_range=POS_RESAMPLING_RANGE,
+		debug_vis=DEBUG_VIS,
+		ranges=mdp.UniformPoseCommandCfg.Ranges(
+			pos_x=(-1.0, 1.0), pos_y=(-1.0, 1.0), pos_z=(0.1, 0.5), roll=(0.0, 0.0), pitch=(0.0, 0.0), yaw=(0.0, 0.0)
+		),
+	)
 
 
 @configclass
 class ActionsCfg:
 	"""Action specifications for the MDP."""
-	joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25, use_default_offset=True)
+	legs_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=UNITREE_GO2_Z1_CFG.actuators["base_legs"].joint_names_expr, scale=0.25, use_default_offset=True)
+	arm_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=UNITREE_GO2_Z1_CFG.actuators["base_arm"].joint_names_expr, scale=1.0, use_default_offset=False)
 
 
 @configclass
@@ -144,6 +175,7 @@ class ObservationsCfg:
 			noise=Unoise(n_min=-0.05, n_max=0.05),
 		)
 		velocity_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "base_velocity"})
+		pos_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "ee_pos"})
 		joint_pos = ObservationTermCfg(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
 		joint_vel = ObservationTermCfg(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
 		actions = ObservationTermCfg(func=mdp.last_action)
@@ -277,7 +309,8 @@ class FlatRewardsCfg:
 	"""Reward terms for the MDP."""
 		
 	r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity",   "maxerr": 1.3*MAX_COM_LINSPEED}, weight=3.0)
-	r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COM_ANGSPEED    }, weight=3.0) 
+	r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COM_ANGSPEED    }, weight=3.0)
+	r_com_eepos_lin = RewardTermCfg(func=mdp.r_com_eepos_lin, params={"command_name": "ee_pos",            "maxerr": 2.5                 }, weight=3.0)
 	
 	r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin, params={                                     "maxerr": 800                 }, weight=2.0)
 	r_action_rate_lin = RewardTermCfg(func=mdp.r_action_rate_lin, params={                                 "maxerr": 2.0*math.pi         }, weight=2.0)
@@ -330,20 +363,16 @@ class CurriculumRewardsCfg:
 
 @configclass
 class FlatTerminationsCfg:
-	"""Termination terms for the MDP."""
-	
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
 	contact_full = TerminationTermCfg(
 		func=mdp.illegal_contact,
 		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES_H), "threshold": 1.0},
 	)
+	
 @configclass
 class CurriculumTerminationsCfg:
-	"""Termination terms for the MDP."""
-	
 	out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
-	
 	base_contact = TerminationTermCfg(
 		func=mdp.illegal_contact,
 		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
@@ -356,7 +385,7 @@ class NoCurriculumCfg : pass
 class CurriculumCfg:
 	"""Curriculum terms for the MDP."""
 
-	terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels_vel2)
+	terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels)
 
 
 ##
@@ -365,7 +394,7 @@ class CurriculumCfg:
 
 
 @configclass
-class CustomEnvCfg(RLTaskEnvCfg):
+class EnvCfg(RLTaskEnvCfg):
 	def __post_init__(self):
 		"""Post initialization."""
 		
@@ -388,7 +417,7 @@ class CustomEnvCfg(RLTaskEnvCfg):
 		if self.scene.contact_sensor is not None:
 			self.scene.contact_sensor.update_period = self.sim.dt
 @configclass
-class FlatCustomEnvCfg(CustomEnvCfg):
+class FlatEnvCfg(EnvCfg):
 	"""Configuration for the locomotion velocity-tracking environment."""
 
 	# Scene settings
@@ -406,7 +435,7 @@ class FlatCustomEnvCfg(CustomEnvCfg):
 	
 	episode_length_s = FLAT_EPISODE_LENGTH
 @configclass
-class CurriculumCustomEnvCfg(CustomEnvCfg):
+class CurriculumEnvCfg(EnvCfg):
 	"""Configuration for the locomotion velocity-tracking environment."""
 
 	# Scene settings
@@ -426,7 +455,7 @@ class CurriculumCustomEnvCfg(CustomEnvCfg):
 
 
 @configclass
-class CustomEnvCfg_PlayControl(CurriculumCustomEnvCfg):
+class CurriculumEnvCfg_PlayControl(CurriculumEnvCfg):
 	def __post_init__(self):
 		# post init of parent
 		super().__post_init__()

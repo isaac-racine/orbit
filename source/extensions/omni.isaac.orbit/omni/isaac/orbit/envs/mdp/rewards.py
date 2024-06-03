@@ -807,11 +807,18 @@ def r_com_angvel_lin(env: RLTaskEnv, maxerr: float, command_name: str, asset_cfg
 	diff = command[:, 2] - asset.data.root_ang_vel_b[:, 2]
 	err = torch.abs(diff)
 	return lin(err, maxerr)
-def r_heading_lin(env: RLTaskEnv, command_name: str, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def r_com_heading_lin(env: RLTaskEnv, command_name: str, maxerr: float = pi, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
 	asset: RigidObject = env.scene[asset_cfg.name]
 	command: torch.Tensor = env.command_manager.get_command(command_name)
 	
 	err = torch.abs(command[:, 2]) # pi at max
+	return lin(err, maxerr)
+def r_com_eepos_lin(env: RLTaskEnv, maxerr: float, command_name: str, ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame")) -> torch.Tensor:
+	ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
+	command: torch.Tensor = env.command_manager.get_term(command_name).pose_command_w
+	
+	diff = ee_frame.data.target_pos_w[:,0,:] - command[:,:3]
+	err = torch.linalg.norm(diff, dim=-1)
 	return lin(err, maxerr)
 
 
