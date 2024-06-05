@@ -1,0 +1,1 @@
+Entrainement d'un contrôleur avec la tâche "Isaac-Velocity-Rough-Unitree-Go2-v0". Utilise le curriculum de terrain par défaut et tous les paramètres d'apprentissage par défaut. Utilise par défaut un scanner en grille pour calculer la hauteur au sol . Résultats dans "rsl\rl/unitree\go2\rough/vel\rough\default".
