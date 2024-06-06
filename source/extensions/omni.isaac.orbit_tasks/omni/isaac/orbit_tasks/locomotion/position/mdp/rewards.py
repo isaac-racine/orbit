@@ -13,7 +13,7 @@ from omni.isaac.lab.sensors import ContactSensor
 from omni.isaac.lab.utils.math import quat_rotate_inverse, yaw_quat
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedRLEnv, RLTaskEnv
+    from omni.isaac.lab.envs import RLTaskEnv
 
 
 def feet_air_time(env: RLTaskEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor: # A modifier pour la version IsaacLab

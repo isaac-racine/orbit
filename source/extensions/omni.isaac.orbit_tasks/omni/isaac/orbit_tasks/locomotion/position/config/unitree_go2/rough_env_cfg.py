@@ -6,7 +6,7 @@
 from omni.isaac.orbit.utils import configclass
 
 from omni.isaac.orbit_tasks.locomotion.position.position_env_cfg import LocomotionPositionRoughEnvCfg
-import omni.isaac.orbit_tasks.locomotion.velocity.mdp as mdp
+#import omni.isaac.orbit_tasks.locomotion.velocity.mdp as mdp
 
 from omni.isaac.orbit.sensors.ray_caster.ray_caster_cfg import RayCasterCfg
 from omni.isaac.orbit.sensors.ray_caster.patterns.patterns_cfg import OmniPatternCfg
