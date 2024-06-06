@@ -19,7 +19,7 @@ from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG, GREEN_ARROW_X
 
 if TYPE_CHECKING:
 	from omni.isaac.lab.envs import ManagerBasedEnv
-	from .commands_cfg import NormalVelocityCommandCfg, UniformVelocityCommandCfg, UserVelocityCommandCfg
+	from .commands_cfg import NormalVelocityCommandCfg, UniformVelocityCommandCfg #, UserVelocityCommandCfg
 
 
 class UniformVelocityCommand(CommandTerm):

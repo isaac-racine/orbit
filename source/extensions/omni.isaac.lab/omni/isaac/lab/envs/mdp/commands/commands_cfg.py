@@ -27,8 +27,8 @@ class NullCommandCfg(CommandTermCfg):
 		self.resampling_time_range = (math.inf, math.inf)
 
 
-	@configclass
-	class UniformVelocityCommandCfg(CommandTermCfg):
+@configclass
+class UniformVelocityCommandCfg(CommandTermCfg):
 	"""Configuration for the uniform velocity command generator."""
 
 	class_type: type = UniformVelocityCommand
