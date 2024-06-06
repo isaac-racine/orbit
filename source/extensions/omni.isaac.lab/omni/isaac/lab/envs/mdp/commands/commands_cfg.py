@@ -12,7 +12,7 @@ from omni.isaac.lab.utils import configclass
 from .null_command import NullCommand
 from .pose_2d_command import TerrainBasedPose2dCommand, UniformPose2dCommand
 from .pose_command import UniformPoseCommand
-from .velocity_command import NormalVelocityCommand, UniformVelocityCommand, UserVelocityCommand
+from .velocity_command import NormalVelocityCommand, UniformVelocityCommand #, UserVelocityCommand
 
 
 @configclass
@@ -63,14 +63,14 @@ class UniformVelocityCommandCfg(CommandTermCfg):
     """Distribution ranges for the velocity commands."""
 
 
-@configclass
-class UserVelocityCommandCfg(CommandTermCfg):
-    """Configuration for the user controlled velocity command generator."""
+# @configclass
+# class UserVelocityCommandCfg(CommandTermCfg):
+#     """Configuration for the user controlled velocity command generator."""
 
-    class_type: type = UserVelocityCommand
+#     class_type: type = UserVelocityCommand
 
-    asset_name: str = MISSING
-    """Name of the asset in the environment for which the commands are generated."""
+#     asset_name: str = MISSING
+#     """Name of the asset in the environment for which the commands are generated."""
 
 
 @configclass
