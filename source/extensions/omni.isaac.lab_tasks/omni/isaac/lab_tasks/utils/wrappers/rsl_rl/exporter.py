@@ -47,11 +47,7 @@ Helper Classes - Private.
 class _TorchPolicyExporter(torch.nn.Module):
     """Exporter of actor-critic into JIT file."""
 
-<<<<<<< HEAD
-    def __init__(self, actor_critic):
-=======
     def __init__(self, actor_critic, normalizer=None):
->>>>>>> 8816fb76f3c4d8ab00a21e637abec481f9b4e167
         super().__init__()
         self.actor = copy.deepcopy(actor_critic.actor)
         self.is_recurrent = actor_critic.is_recurrent

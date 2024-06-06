@@ -13,16 +13,10 @@ from omni.isaac.lab.sensors import ContactSensor
 from omni.isaac.lab.utils.math import quat_rotate_inverse, yaw_quat
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedRLEnv
+    from omni.isaac.lab.envs import ManagerBasedRLEnv, RLTaskEnv
 
 
-<<<<<<<< HEAD:source/extensions/omni.isaac.orbit_tasks/omni/isaac/orbit_tasks/locomotion/position/mdp/rewards.py
-def feet_air_time(env: RLTaskEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor:
-========
-def feet_air_time(
-    env: ManagerBasedRLEnv, command_name: str, sensor_cfg: SceneEntityCfg, threshold: float
-) -> torch.Tensor:
->>>>>>>> 8816fb76f3c4d8ab00a21e637abec481f9b4e167:source/extensions/omni.isaac.lab_tasks/omni/isaac/lab_tasks/manager_based/locomotion/velocity/mdp/rewards.py
+def feet_air_time(env: RLTaskEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor: # A modifier pour la version IsaacLab
     """Reward long steps taken by the feet using L2-kernel.
 
     This function rewards the agent for taking steps that are longer than a threshold. This helps ensure

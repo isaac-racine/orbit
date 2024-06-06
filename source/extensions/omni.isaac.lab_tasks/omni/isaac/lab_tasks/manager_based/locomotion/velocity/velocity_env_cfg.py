@@ -38,11 +38,7 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
-<<<<<<< HEAD
 	"""Configuration for the terrain scene with a legged robot."""
-=======
-    """Configuration for the terrain scene with a legged robot."""
->>>>>>> 8816fb76f3c4d8ab00a21e637abec481f9b4e167
 
     # ground terrain
     terrain = TerrainImporterCfg(

@@ -31,14 +31,14 @@ import omni.isaac.lab_tasks  # noqa: F401
 
 
 def main():
-    """Print all environments registered in `omni.isaac.lab_tasks` extension."""
-    # print all the available environments
-    table = PrettyTable(["S. No.", "Task Name", "Entry Point", "Config"])
-    table.title = "Available Environments in Isaac Lab"
-    # set alignment of table columns
-    table.align["Task Name"] = "l"
-    table.align["Entry Point"] = "l"
-    table.align["Config"] = "l"
+	"""Print all environments registered in `omni.isaac.lab_tasks` extension."""
+	# print all the available environments
+	table = PrettyTable(["S. No.", "Task Name", "Entry Point", "Config"])
+	table.title = "Available Environments in Isaac Lab"
+	# set alignment of table columns
+	table.align["Task Name"] = "l"
+	table.align["Entry Point"] = "l"
+	table.align["Config"] = "l"
 
 	# count of environments
 	index = 0
