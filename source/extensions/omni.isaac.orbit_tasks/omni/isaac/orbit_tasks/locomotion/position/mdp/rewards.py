@@ -16,7 +16,9 @@ if TYPE_CHECKING:
     from omni.isaac.lab.envs import RLTaskEnv
 
 
-def feet_air_time(env: RLTaskEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor: # A modifier pour la version IsaacLab
+def feet_air_time(
+    env: RLTaskEnv, sensor_cfg: SceneEntityCfg, threshold: float
+) -> torch.Tensor:  # A modifier pour la version IsaacLab
     """Reward long steps taken by the feet using L2-kernel.
 
     This function rewards the agent for taking steps that are longer than a threshold. This helps ensure
@@ -31,7 +33,7 @@ def feet_air_time(env: RLTaskEnv, sensor_cfg: SceneEntityCfg, threshold: float) 
     first_contact = contact_sensor.compute_first_contact(env.step_dt)[:, sensor_cfg.body_ids]
     last_air_time = contact_sensor.data.last_air_time[:, sensor_cfg.body_ids]
     reward = torch.sum((last_air_time - threshold) * first_contact, dim=1)
-    
+
     return reward
 
 

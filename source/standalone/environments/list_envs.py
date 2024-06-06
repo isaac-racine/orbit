@@ -31,34 +31,34 @@ import omni.isaac.lab_tasks  # noqa: F401
 
 
 def main():
-	"""Print all environments registered in `omni.isaac.lab_tasks` extension."""
-	# print all the available environments
-	table = PrettyTable(["S. No.", "Task Name", "Entry Point", "Config"])
-	table.title = "Available Environments in Isaac Lab"
-	# set alignment of table columns
-	table.align["Task Name"] = "l"
-	table.align["Entry Point"] = "l"
-	table.align["Config"] = "l"
+    """Print all environments registered in `omni.isaac.lab_tasks` extension."""
+    # print all the available environments
+    table = PrettyTable(["S. No.", "Task Name", "Entry Point", "Config"])
+    table.title = "Available Environments in Isaac Lab"
+    # set alignment of table columns
+    table.align["Task Name"] = "l"
+    table.align["Entry Point"] = "l"
+    table.align["Config"] = "l"
 
-	# count of environments
-	index = 0
-	# acquire all Isaac environments names
-	for task_spec in gym.registry.values():
-		if "Isaac" in task_spec.id:
-			# add details to table
-			table.add_row([index + 1, task_spec.id, task_spec.entry_point, task_spec.kwargs["env_cfg_entry_point"]])
-			# increment count
-			index += 1
+    # count of environments
+    index = 0
+    # acquire all Isaac environments names
+    for task_spec in gym.registry.values():
+        if "Isaac" in task_spec.id:
+            # add details to table
+            table.add_row([index + 1, task_spec.id, task_spec.entry_point, task_spec.kwargs["env_cfg_entry_point"]])
+            # increment count
+            index += 1
 
-	print(table)
+    print(table)
 
 
 if __name__ == "__main__":
-	try:
-		# run the main function
-		main()
-	except Exception as e:
-		raise e
-	finally:
-		# close the app
-		simulation_app.close()
+    try:
+        # run the main function
+        main()
+    except Exception as e:
+        raise e
+    finally:
+        # close the app
+        simulation_app.close()

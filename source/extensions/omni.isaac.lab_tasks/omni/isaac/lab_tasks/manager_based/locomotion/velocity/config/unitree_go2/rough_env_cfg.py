@@ -5,8 +5,8 @@
 
 from omni.isaac.lab.utils import configclass
 
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import LocomotionVelocityRoughEnvCfg
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import LocomotionVelocityRoughEnvCfg
 
 ##
 # Pre-defined configs
@@ -84,6 +84,7 @@ class UnitreeGo2RoughEnvCfg_PLAY(UnitreeGo2RoughEnvCfg):
         self.events.base_external_force_torque = None
         self.events.push_robot = None
 
+
 @configclass
 class UnitreeGo2RoughEnvCfg_PLAYCONTROL(UnitreeGo2RoughEnvCfg_PLAY):
     def __post_init__(self):
@@ -91,7 +92,7 @@ class UnitreeGo2RoughEnvCfg_PLAYCONTROL(UnitreeGo2RoughEnvCfg_PLAY):
         super().__post_init__()
 
         self.commands.base_velocity = mdp.UserVelocityCommandCfg(
-			asset_name="robot",
-			debug_vis=True,
-			resampling_time_range=(10.0, 10.0), # not used 
-		)
+            asset_name="robot",
+            debug_vis=True,
+            resampling_time_range=(10.0, 10.0),  # not used
+        )

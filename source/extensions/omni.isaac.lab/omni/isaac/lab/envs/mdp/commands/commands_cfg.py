@@ -57,10 +57,11 @@ class UniformVelocityCommandCfg(CommandTermCfg):
         lin_vel_x: tuple[float, float] = MISSING  # min max [m/s]
         lin_vel_y: tuple[float, float] = MISSING  # min max [m/s]
         ang_vel_z: tuple[float, float] = MISSING  # min max [rad/s]
-        heading: tuple[float, float] = MISSING	# min max [rad]
+        heading: tuple[float, float] = MISSING  # min max [rad]
 
     ranges: Ranges = MISSING
     """Distribution ranges for the velocity commands."""
+
 
 @configclass
 class UserVelocityCommandCfg(CommandTermCfg):
