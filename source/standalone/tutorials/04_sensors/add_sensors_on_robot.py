@@ -51,7 +51,7 @@ from omni.isaac.lab.utils import configclass
 # Pre-defined configs
 ##
 from omni.isaac.lab_assets.anymal import ANYMAL_C_CFG  # isort: skip
-
+from omni.isaac.lab_assets.unitree import UNITREE_GO2_CAM360_CFG
 
 @configclass
 class SensorsSceneCfg(InteractiveSceneCfg):
@@ -66,20 +66,21 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     )
 
     # robot
-    robot: ArticulationCfg = ANYMAL_C_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    #robot: ArticulationCfg = ANYMAL_C_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    robot: ArticulationCfg = UNITREE_GO2_CAM360_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
-    camera = CameraCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
-        update_period=0.1,
-        height=480,
-        width=640,
-        data_types=["rgb", "distance_to_image_plane"],
-        spawn=sim_utils.PinholeCameraCfg(
-            focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
-        ),
-        offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),
-    )
+    # camera = CameraCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/base/front_cam",
+    #     update_period=0.1,
+    #     height=480,
+    #     width=640,
+    #     data_types=["rgb", "distance_to_image_plane"],
+    #     spawn=sim_utils.PinholeCameraCfg(
+    #         focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+    #     ),
+    #     offset=CameraCfg.OffsetCfg(pos=(0.510, 0.0, 0.015), rot=(0.5, -0.5, 0.5, -0.5), convention="ros"),
+    # )
     height_scanner = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base",
         update_period=0.02,
@@ -90,8 +91,10 @@ class SensorsSceneCfg(InteractiveSceneCfg):
         mesh_prim_paths=["/World/defaultGroundPlane"],
     )
     contact_forces = ContactSensorCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/.*_FOOT", update_period=0.0, history_length=6, debug_vis=True
+        #prim_path="{ENV_REGEX_NS}/Robot/.*_FOOT", update_period=0.0, history_length=6, debug_vis=True # For anymal_C
+        prim_path="{ENV_REGEX_NS}/Robot/.*_foot", update_period=0.0, history_length=6, debug_vis=True # For Unitree G02
     )
+    
 
 
 def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
@@ -141,9 +144,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
 
         # print information from the sensors
         print("-------------------------------")
-        print(scene["camera"])
-        print("Received shape of rgb   image: ", scene["camera"].data.output["rgb"].shape)
-        print("Received shape of depth image: ", scene["camera"].data.output["distance_to_image_plane"].shape)
+        #print(scene["camera"])
+        #print("Received shape of rgb   image: ", scene["camera"].data.output["rgb"].shape)
+        #print("Received shape of depth image: ", scene["camera"].data.output["distance_to_image_plane"].shape)
         print("-------------------------------")
         print(scene["height_scanner"])
         print("Received max height value: ", torch.max(scene["height_scanner"].data.ray_hits_w[..., -1]).item())
@@ -159,7 +162,7 @@ def main():
     sim_cfg = sim_utils.SimulationCfg(dt=0.005, substeps=1)
     sim = sim_utils.SimulationContext(sim_cfg)
     # Set main camera
-    sim.set_camera_view(eye=[3.5, 3.5, 3.5], target=[0.0, 0.0, 0.0])
+    #sim.set_camera_view(eye=[3.5, 3.5, 3.5], target=[0.0, 0.0, 0.0])
     # design scene
     scene_cfg = SensorsSceneCfg(num_envs=args_cli.num_envs, env_spacing=2.0)
     scene = InteractiveScene(scene_cfg)
