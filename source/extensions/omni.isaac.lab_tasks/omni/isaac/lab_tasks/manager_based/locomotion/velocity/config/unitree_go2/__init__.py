@@ -52,6 +52,7 @@ gym.register(
         "env_cfg_entry_point": rough_env_cfg.UnitreeGo2RoughEnvCfg_PLAY,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_rough_ppo_cfg.yaml",
+<<<<<<< HEAD
     },
 )
 
@@ -62,5 +63,7 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": rough_env_cfg.UnitreeGo2RoughEnvCfg_PLAYCONTROL,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.UnitreeGo2RoughPPORunnerCfg,
+=======
+>>>>>>> 8816fb76f3c4d8ab00a21e637abec481f9b4e167
     },
 )

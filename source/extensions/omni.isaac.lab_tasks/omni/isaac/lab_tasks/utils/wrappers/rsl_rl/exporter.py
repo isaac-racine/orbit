@@ -8,15 +8,16 @@ import os
 import torch
 
 
-def export_policy_as_jit(actor_critic: object, path: str, filename="policy.pt"):
+def export_policy_as_jit(actor_critic: object, normalizer: object | None, path: str, filename="policy.pt"):
     """Export policy into a Torch JIT file.
 
     Args:
         actor_critic: The actor-critic torch module.
+        normalizer: The empirical normalizer module. If None, Identity is used.
         path: The path to the saving directory.
         filename: The name of exported JIT file. Defaults to "policy.pt".
     """
-    policy_exporter = _TorchPolicyExporter(actor_critic)
+    policy_exporter = _TorchPolicyExporter(actor_critic, normalizer)
     policy_exporter.export(path, filename)
 
 
@@ -27,13 +28,14 @@ def export_policy_as_onnx(
 
     Args:
         actor_critic: The actor-critic torch module.
+        normalizer: The empirical normalizer module. If None, Identity is used.
         path: The path to the saving directory.
-        filename: The name of exported JIT file. Defaults to "policy.pt".
+        filename: The name of exported ONNX file. Defaults to "policy.onnx".
         verbose: Whether to print the model summary. Defaults to False.
     """
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
-    policy_exporter = _OnnxPolicyExporter(actor_critic, verbose)
+    policy_exporter = _OnnxPolicyExporter(actor_critic, normalizer, verbose)
     policy_exporter.export(path, filename)
 
 
@@ -45,7 +47,11 @@ Helper Classes - Private.
 class _TorchPolicyExporter(torch.nn.Module):
     """Exporter of actor-critic into JIT file."""
 
+<<<<<<< HEAD
     def __init__(self, actor_critic):
+=======
+    def __init__(self, actor_critic, normalizer=None):
+>>>>>>> 8816fb76f3c4d8ab00a21e637abec481f9b4e167
         super().__init__()
         self.actor = copy.deepcopy(actor_critic.actor)
         self.is_recurrent = actor_critic.is_recurrent
@@ -56,8 +62,14 @@ class _TorchPolicyExporter(torch.nn.Module):
             self.register_buffer("cell_state", torch.zeros(self.rnn.num_layers, 1, self.rnn.hidden_size))
             self.forward = self.forward_lstm
             self.reset = self.reset_memory
+        # copy normalizer if exists
+        if normalizer:
+            self.normalizer = copy.deepcopy(normalizer)
+        else:
+            self.normalizer = torch.nn.Identity()
 
     def forward_lstm(self, x):
+        x = self.normalizer(x)
         x, (h, c) = self.rnn(x.unsqueeze(0), (self.hidden_state, self.cell_state))
         self.hidden_state[:] = h
         self.cell_state[:] = c
@@ -65,7 +77,7 @@ class _TorchPolicyExporter(torch.nn.Module):
         return self.actor(x)
 
     def forward(self, x):
-        return self.actor(x)
+        return self.actor(self.normalizer(x))
 
     @torch.jit.export
     def reset(self):
@@ -86,7 +98,7 @@ class _TorchPolicyExporter(torch.nn.Module):
 class _OnnxPolicyExporter(torch.nn.Module):
     """Exporter of actor-critic into ONNX file."""
 
-    def __init__(self, actor_critic, verbose=False):
+    def __init__(self, actor_critic, normalizer=None, verbose=False):
         super().__init__()
         self.verbose = verbose
         self.actor = copy.deepcopy(actor_critic.actor)
@@ -95,14 +107,20 @@ class _OnnxPolicyExporter(torch.nn.Module):
             self.rnn = copy.deepcopy(actor_critic.memory_a.rnn)
             self.rnn.cpu()
             self.forward = self.forward_lstm
+        # copy normalizer if exists
+        if normalizer:
+            self.normalizer = copy.deepcopy(normalizer)
+        else:
+            self.normalizer = torch.nn.Identity()
 
     def forward_lstm(self, x_in, h_in, c_in):
+        x_in = self.normalizer(x_in)
         x, (h, c) = self.rnn(x_in.unsqueeze(0), (h_in, c_in))
         x = x.squeeze(0)
         return self.actor(x), h, c
 
     def forward(self, x):
-        return self.actor(x)
+        return self.actor(self.normalizer(x))
 
     def export(self, path, filename):
         self.to("cpu")

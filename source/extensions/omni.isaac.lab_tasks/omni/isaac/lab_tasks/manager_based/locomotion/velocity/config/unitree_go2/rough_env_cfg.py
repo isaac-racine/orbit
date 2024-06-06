@@ -6,7 +6,10 @@
 from omni.isaac.lab.utils import configclass
 
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import LocomotionVelocityRoughEnvCfg
+<<<<<<< HEAD
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
+=======
+>>>>>>> 8816fb76f3c4d8ab00a21e637abec481f9b4e167
 
 ##
 # Pre-defined configs
