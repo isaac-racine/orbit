@@ -6,8 +6,8 @@
 """Configuration for custom terrains."""
 
 import omni.isaac.lab.terrains as terrain_gen
-
-from ..terrain_generator_cfg import TerrainGeneratorCfg
+import math
+from ..terrain_generator_cfg import TerrainGeneratorCfg, FlatPatchSamplingCfg
 
 ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
     size=(8.0, 8.0),
@@ -50,3 +50,90 @@ ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
     },
 )
 """Rough terrains configuration."""
+
+
+PLATFORM_sz = 2.0
+BORDER_WIDTH = 0.0
+MAX_SLOPE = 33.0*math.pi/180.0
+TERRAIN_SZ = 10.0
+TARGET_SAMPLING_CFG = FlatPatchSamplingCfg(
+	num_patches=8,
+	patch_radius=[0.01],
+	max_height_diff=math.inf,
+	x_range = (-TERRAIN_SZ/2, TERRAIN_SZ/2),
+	y_range = (-TERRAIN_SZ/2, TERRAIN_SZ/2),
+	z_range = (-100, 100), # should be enough
+)
+CUSTOM_TERRAIN_CFG = TerrainGeneratorCfg(
+	size=(TERRAIN_SZ,TERRAIN_SZ),
+	border_width=5.0, # prevent robots from falling over the edge
+	num_rows=10,
+	num_cols=8,
+	use_cache=False,
+	curriculum=True,
+	sub_terrains={
+		"flat": terrain_gen.MeshPlaneTerrainCfg(),
+		"boxes": terrain_gen.MeshRandomGridTerrainCfg(
+			platform_width=PLATFORM_sz,
+			grid_width=0.45,
+			grid_height_range=(0.0, 0.2),
+		),
+		"pyramid_slope": terrain_gen.MeshPyramidSlopeTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			slope_angle_range=(0.0, MAX_SLOPE),
+			holes=False,
+		),
+		"pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			step_height_range=(0.0, 0.3),
+			step_width=0.3,
+			holes=False,
+		),
+		"pyramid_randstairs": terrain_gen.MeshPyramidStairsRandTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			step_height_range=(0.0, 0.3),
+			step_width_range=(0.25, 0.7),
+			step_height_maxincr = 0.1,
+			holes=False,
+		),
+		"inv_pyramid_slope": terrain_gen.MeshInvertedPyramidSlopeTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			slope_angle_range=(0.0, MAX_SLOPE),
+			holes=False,
+		),
+		"inv_pyramid_stairs": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			step_height_range=(0.0, 0.3),
+			step_width=0.3,
+			holes=False,
+		),
+		"inv_pyramid_randstairs": terrain_gen.MeshInvertedPyramidStairsRandTerrainCfg(
+			platform_width=PLATFORM_sz,
+			border_width=BORDER_WIDTH,
+			step_height_range=(0.0, 0.3),
+			step_width_range=(0.25, 0.7),
+			step_height_maxincr = 0.1,
+			holes=False,
+		),
+	},
+)
+for key in CUSTOM_TERRAIN_CFG.sub_terrains : CUSTOM_TERRAIN_CFG.sub_terrains[key].flat_patch_sampling={'target': TARGET_SAMPLING_CFG}
+
+NOISE_TERRAIN_CFG = TerrainGeneratorCfg(
+	size=(4.0,4.0),
+	difficulty_range=(1.0,1.0),
+	num_rows=1,
+	num_cols=1,
+	use_cache=False,
+	curriculum=False,
+	sub_terrains={
+		"noise": terrain_gen.HfRandomUniformTerrainCfg(
+			noise_range=(0.02, 0.10), noise_step=0.02
+		)
+	}
+)

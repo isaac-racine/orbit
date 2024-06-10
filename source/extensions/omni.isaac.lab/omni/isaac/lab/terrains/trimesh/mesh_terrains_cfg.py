@@ -51,6 +51,55 @@ class MeshPyramidStairsTerrainCfg(SubTerrainBaseCfg):
 
 
 @configclass
+class MeshPyramidStairsRandTerrainCfg(SubTerrainBaseCfg):
+	"""Configuration for a randomized pyramid stair mesh terrain."""
+	
+	function = mesh_terrains.pyramid_stairsrand_terrain
+
+	border_width: float = 0.0
+	"""The width of the border around the terrain (in m). Defaults to 0.0.
+
+	The border is a flat terrain with the same height as the terrain.
+	"""
+	step_height_range: tuple[float, float] = MISSING
+	"""The minimum and maximum height of the steps (in m)."""
+	step_width_range: tuple[float, float] = MISSING
+	"""The minimum and maximum width of the steps (in m)."""
+	step_height_maxincr: float = .0
+	"""The maximum increment to the min. step height (in m)."""
+	step_width_maxincr: float = .0
+	"""The maximum increment to the min. step width (in m)."""
+	platform_width: float = 1.0
+	"""The width of the square platform at the center of the terrain. Defaults to 1.0."""
+	holes: bool = False
+	"""If True, the terrain will have holes in the steps. Defaults to False.
+
+	If :obj:`holes` is True, the terrain will have pyramid stairs of length or width
+	:obj:`platform_width` (depending on the direction) with no steps in the remaining area. Additionally,
+	no border will be added.
+	"""
+
+
+@configclass
+class MeshPyramidSlopeTerrainCfg(SubTerrainBaseCfg):
+	"""Configuration for a pyramid stair mesh terrain."""
+
+	function = mesh_terrains.pyramid_slope_terrain
+
+	border_width: float = 0.0
+	"""The width of the border around the terrain (in m). Defaults to 0.0.
+
+	The border is a flat terrain with the same height as the terrain.
+	"""
+	slope_angle_range: tuple[float, float] = MISSING
+	"""The minimum and maximum slope angle (in radians)."""
+	platform_width: float = 1.0
+	"""The width of the square platform at the center of the terrain. Defaults to 1.0."""
+	holes: bool = False
+	"""If True, the terrain will have holes between slopes. Defaults to False."""
+
+
+@configclass
 class MeshInvertedPyramidStairsTerrainCfg(MeshPyramidStairsTerrainCfg):
     """Configuration for an inverted pyramid stair mesh terrain.
 
@@ -59,6 +108,22 @@ class MeshInvertedPyramidStairsTerrainCfg(MeshPyramidStairsTerrainCfg):
     """
 
     function = mesh_terrains.inverted_pyramid_stairs_terrain
+
+
+@configclass
+class MeshInvertedPyramidStairsRandTerrainCfg(MeshPyramidStairsRandTerrainCfg):
+	"""Configuration for an inverted randomized pyramid stair mesh terrain.
+
+	Note:
+		This is the same as :class:`MeshPyramidStairsRandTerrainCfg` except that the steps are inverted.
+	"""
+
+	function = mesh_terrains.inverted_pyramid_stairsrand_terrain
+
+
+@configclass
+class MeshInvertedPyramidSlopeTerrainCfg(MeshPyramidSlopeTerrainCfg):
+	function = mesh_terrains.inverted_pyramid_slope_terrain
 
 
 @configclass
