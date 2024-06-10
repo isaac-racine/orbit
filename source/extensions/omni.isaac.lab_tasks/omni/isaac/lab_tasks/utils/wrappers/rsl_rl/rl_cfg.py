@@ -27,6 +27,18 @@ class RslRlPpoActorCriticCfg:
 
     activation: str = MISSING
     """The activation function for the actor and critic networks."""
+    
+@configclass
+class RslRlPpoActorCriticRecurrentCfg(RslRlPpoActorCriticCfg):
+
+	class_name: str = "ActorCriticRecurrent"
+	
+	rnn_type: str = 'lstm'
+	
+	rnn_hidden_size: int = MISSING
+	
+	rnn_num_layers: int = MISSING
+
 
 
 @configclass

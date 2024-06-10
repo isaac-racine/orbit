@@ -58,6 +58,12 @@ class ManagerBasedRLEnvCfg(ManagerBasedEnvCfg):
     """
 
     # environment settings
+    constraints: object = MISSING
+    """Constraint settings.
+
+    Please refer to the :class:`omni.isaac.lab.managers.ConstraintManager` class for more details.
+    """
+
     rewards: object = MISSING
     """Reward settings.
 

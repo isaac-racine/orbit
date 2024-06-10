@@ -199,6 +199,10 @@ class EventTermCfg(ManagerTermBaseCfg):
     Note:
         This is only used if the mode is ``"interval"``.
     """
+    curriculum_dependency: bool = False
+    curriculum_row_range: tuple[int, int] = (0,-1)
+    curriculum_col_range: tuple[int, int] = (0,-1)
+    """Whether this term is applied only for certain terrain levels and types"""
 
     is_global_time: bool = False
     """ Whether randomization should be tracked on a per-environment basis.
@@ -257,6 +261,41 @@ class RewardTermCfg(ManagerTermBaseCfg):
         If the weight is zero, the reward term is ignored.
     """
 
+    has_two: bool = False
+    """The term has two weights"""
+    weight2: float = MISSING
+    
+    curriculum_dependency: bool = False
+    curriculum_row_range: tuple[int, int] = (0,-1)
+    curriculum_col_range: tuple[int, int] = (0,-1)
+    """Whether this term is applied only for certain terrain levels and types"""
+
+
+##
+# Constraint manager.
+##
+
+
+@configclass
+class ConstraintTermCfg(ManagerTermBaseCfg):
+    """Configuration for a reward term."""
+
+    func: Callable[..., torch.Tensor] = MISSING
+    """The name of the function to be called.
+    This function should take the environment object and any other parameters
+    as input and return the reward signals as torch float tensors of
+    shape (num_envs,).
+    """
+
+    pmax: float = 1.0
+    """Max termination probability"""
+    tau: float = 0.95
+    """Decay rate used in the exponential moving average computation of cmax."""
+
+    curriculum_dependency: bool = False
+    curriculum_row_range: tuple[int, int] = (0,-1)
+    curriculum_col_range: tuple[int, int] = (0,-1)
+    """Whether this term is applied only for certain terrain levels and types"""
 
 ##
 # Termination manager.

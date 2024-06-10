@@ -146,6 +146,178 @@ def pyramid_stairs_terrain(
 
     return meshes_list, origin
 
+def pyramid_stairsrand_terrain(
+	difficulty: float, cfg: mesh_terrains_cfg.MeshPyramidStairsRandTerrainCfg
+) -> tuple[list[trimesh.Trimesh], np.ndarray]:
+	
+	# Doesn't work with non square terrain
+	cfg.platform_height = cfg.platform_width
+	
+	step_width_max = cfg.step_width_range[0] + difficulty * (cfg.step_width_range[1] - cfg.step_width_range[0])
+	step_height_max = cfg.step_height_range[0] + difficulty * (cfg.step_height_range[1] - cfg.step_height_range[0])
+	step_width_min = difficulty * cfg.step_width_maxincr + cfg.step_width_range[0]
+	step_height_min = difficulty * cfg.step_height_maxincr + cfg.step_height_range[0]
+	
+	terrain_size = np.array((
+		cfg.size[0] - 2 * cfg.border_width,
+		cfg.size[1] - 2 * cfg.border_width
+	))
+	platform_size = np.array((cfg.platform_width, cfg.platform_height))
+	stairs_size = terrain_size - platform_size
+	
+	# get steps, width first
+	steps_width  = np.array(gen_uniform_steps_totsize(stairs_size[0]/2, (step_width_min, step_width_max)))
+	steps_height = np.array(gen_uniform_steps_totnum(len(steps_width), (step_height_min, step_height_max)))
+	height = steps_height[-1]
+
+	meshes_list = list()
+
+	# generate the border if needed
+	if cfg.border_width > 0.0 and not cfg.holes:
+		border_meshes = make_border(cfg.size, terrain_size, 0, [0,0,0])
+		meshes_list += border_meshes
+	
+	# generate the terrain
+	origin = [cfg.size[0]/2, cfg.size[1]/2, height]
+
+	center_mesh = make_plane((cfg.platform_width,cfg.platform_height), height, True)
+	meshes_list.append(center_mesh)
+	
+	# stair profiles
+	stairs_lt = [] ; stairs_lb = []
+	stairs_bl = [] ; stairs_br = []
+	for i in range(len(steps_width)):
+		x = steps_width[i]-terrain_size[0]/2
+		y = steps_width[i]-terrain_size[1]/2
+		
+		if i != 0:
+			stairs_lt.append((x, cfg.platform_height/2, steps_height[i-1]))
+			stairs_lb.append((x, -cfg.platform_height/2, steps_height[i-1]))
+			stairs_br.append((cfg.platform_width/2, y, steps_height[i-1]))
+			stairs_bl.append((-cfg.platform_width/2, y, steps_height[i-1]))
+		
+		stairs_lt.append((x, cfg.platform_height/2, steps_height[i]))
+		stairs_lb.append((x, -cfg.platform_height/2, steps_height[i]))
+		stairs_br.append((cfg.platform_width/2, y, steps_height[i]))
+		stairs_bl.append((-cfg.platform_width/2, y, steps_height[i]))
+	
+	stairs_lt = np.array(stairs_lt) ; stairs_rt = np.copy(stairs_lt) ; stairs_rt[:,0] *= -1
+	stairs_lb = np.array(stairs_lb) ; stairs_rb = np.copy(stairs_lb) ; stairs_rb[:,0] *= -1
+	stairs_tr = np.array(stairs_br) ; stairs_tr = np.copy(stairs_br) ; stairs_tr[:,1] *= -1
+	stairs_tl = np.array(stairs_bl) ; stairs_tl = np.copy(stairs_bl) ; stairs_tl[:,1] *= -1
+	
+	# faces
+	faces = []
+	for i in range(1, len(stairs_lt)):
+		ind1 = i ; ind2 = len(stairs_lt)+i
+		faces += ((ind1-1, ind2-1, ind2),(ind1-1, ind2, ind1))
+	
+	# meshes
+	mesh_l = trimesh.Trimesh( vertices=np.concatenate((stairs_lt, stairs_lb)), faces=np.array(faces) ) # left
+	mesh_b = trimesh.Trimesh( vertices=np.concatenate((stairs_bl, stairs_br)), faces=np.array(faces) ) # bottom
+	mesh_r = trimesh.Trimesh( vertices=np.concatenate((stairs_rb, stairs_rt)), faces=np.array(faces) ) # right
+	mesh_t = trimesh.Trimesh( vertices=np.concatenate((stairs_tr, stairs_tl)), faces=np.array(faces) ) # top
+	meshes_list += [mesh_l, mesh_b, mesh_r, mesh_t]
+	
+	# fill the holes
+	if not cfg.holes:
+		# skewed stairs
+		mesh_bl = trimesh.Trimesh( vertices=np.concatenate((stairs_lb, stairs_bl)), faces=np.array(faces) ) # bottom left
+		mesh_br = trimesh.Trimesh( vertices=np.concatenate((stairs_br, stairs_rb)), faces=np.array(faces) ) # bottom right
+		mesh_tl = trimesh.Trimesh( vertices=np.concatenate((stairs_tl, stairs_lt)), faces=np.array(faces) ) # top left
+		mesh_tr = trimesh.Trimesh( vertices=np.concatenate((stairs_rt, stairs_tr)), faces=np.array(faces) ) # top right
+		meshes_list += [mesh_bl, mesh_br, mesh_tl, mesh_tr]
+		
+		# triangle in each corner
+		for sx in [-1.0,1.0]:
+			for sy in [-1.0,1.0]:
+				meshes_list.append(trimesh.Trimesh(
+					vertices=np.array([
+						(terrain_size[0]/2*sx, terrain_size[1]/2*sy, 0),
+						(platform_size[0]/2*sx, terrain_size[1]/2*sy, 0),
+						(terrain_size[0]/2*sx, platform_size[1]/2*sy, 0),
+					]),
+					faces=np.array((0,1,2)) if sx*sy>0 else np.array((1,0,2))
+				))
+	
+	# move the meshes
+	for mesh in meshes_list:
+		for vert in mesh.vertices:
+			vert[0] += cfg.size[0]/2
+			vert[1] += cfg.size[1]/2
+	
+	return meshes_list, origin
+
+
+
+def pyramid_slope_terrain(
+	difficulty: float, cfg: mesh_terrains_cfg.MeshPyramidSlopeTerrainCfg
+) -> tuple[list[trimesh.Trimesh], np.ndarray]:
+	"""
+	If the size is not square, the slope is respected only for the x-axis
+	"""
+	
+	cfg.platform_height = cfg.platform_width
+	meshes_list = list()
+	
+	slope_size = np.array([
+		cfg.size[0] - 2 * cfg.border_width - cfg.platform_width,
+		cfg.size[1] - 2 * cfg.border_width - cfg.platform_height
+	])/2.0
+	angle = np.array([
+		np.interp(difficulty, (0.0,1.0), cfg.slope_angle_range),
+		0.0
+	])
+	height = np.tan(angle[0])*slope_size[0]
+	angle[1] = np.arctan(height/slope_size[1])
+	slope_length = slope_size / np.cos(angle)
+	
+	terrain_size = (cfg.size[0] - 2 * cfg.border_width, cfg.size[1] - 2 * cfg.border_width)
+	
+	# generate the border if needed
+	if cfg.border_width > 0.0 and not cfg.holes:
+		border_meshes = make_border(cfg.size, terrain_size, 0, [0,0,0])
+		meshes_list += border_meshes
+	
+	# generate the terrain
+	origin = [cfg.size[0]/2, cfg.size[1]/2, height]
+	
+	center_mesh = make_plane((cfg.platform_width,cfg.platform_height), height, True)
+	meshes_list.append(center_mesh)
+	
+	slope_mesh1 = make_slope(angle[0], (0.0,1.0,0.0), (slope_length[0],cfg.platform_height))
+	slope_mesh1.apply_translation(np.array([ cfg.platform_width/2 - np.min(slope_mesh1.vertices[:,0]), 0, height - np.max(slope_mesh1.vertices[:,2]) ]))
+	slope_mesh2 = make_slope(-angle[0], (0.0,1.0,0.0), (slope_length[0],cfg.platform_height))
+	slope_mesh2.apply_translation(np.array([ -cfg.platform_width/2 + np.min(slope_mesh2.vertices[:,0]), 0, height - np.max(slope_mesh2.vertices[:,2]) ]))
+	slope_mesh3 = make_slope(-angle[1], (1.0,0.0,0.0), (cfg.platform_width,slope_length[1]))
+	slope_mesh3.apply_translation(np.array([ 0, cfg.platform_height/2 - np.min(slope_mesh3.vertices[:,1]), height - np.max(slope_mesh3.vertices[:,2]) ]))
+	slope_mesh4 = make_slope(angle[1], (1.0,0.0,0.0), (cfg.platform_width,slope_length[1]))
+	slope_mesh4.apply_translation(np.array([ 0, -cfg.platform_height/2 + np.min(slope_mesh4.vertices[:,1]), height - np.max(slope_mesh4.vertices[:,2]) ]))
+	
+	meshes_list += [slope_mesh1,slope_mesh2,slope_mesh3,slope_mesh4]
+	
+	# fill the holes
+	if not cfg.holes:
+		for sx in [-1.0,1.0]:
+			for sy in [-1.0,1.0]:
+				meshes_list.append(trimesh.Trimesh(
+					vertices=np.array([
+						(sx*cfg.platform_width/2, sy*cfg.platform_height/2, height), # bl
+						(sx*terrain_size[0]/2, sy*cfg.platform_height/2, 0), # br
+						(sx*terrain_size[0]/2, sy*terrain_size[1]/2, 0), # tr
+						(sx*cfg.platform_width/2, sy*terrain_size[1]/2, 0), # tl
+					]),
+					faces=np.array([[0,1,2], [0,2,3]]) if sx*sy>0 else np.array([[1,0,2], [2,0,3]])
+				))
+	
+	# move the meshes
+	for mesh in meshes_list:
+		for vert in mesh.vertices:
+			vert[0] += cfg.size[0]/2
+			vert[1] += cfg.size[1]/2
+	
+	
+	return meshes_list, origin
 
 def inverted_pyramid_stairs_terrain(
     difficulty: float, cfg: mesh_terrains_cfg.MeshInvertedPyramidStairsTerrainCfg
@@ -245,6 +417,38 @@ def inverted_pyramid_stairs_terrain(
     origin = np.array([terrain_center[0], terrain_center[1], -(num_steps + 1) * step_height])
 
     return meshes_list, origin
+
+
+def inverted_pyramid_stairsrand_terrain(
+	difficulty: float, cfg: mesh_terrains_cfg.MeshInvertedPyramidStairsRandTerrainCfg
+) -> tuple[list[trimesh.Trimesh], np.ndarray]:
+	meshes_list, origin = pyramid_stairsrand_terrain(difficulty, cfg)
+	# set symmetry
+	for mesh in meshes_list:
+		for vert in mesh.vertices : vert[2] *= -1
+	# flip normals
+	for mesh in meshes_list[-1:-4]:
+		for face in mesh.faces : face[:] = [face[1],face[0],face[2]]
+		
+	origin[2] *= -1
+	
+	return meshes_list, origin
+
+
+def inverted_pyramid_slope_terrain(
+	difficulty: float, cfg: mesh_terrains_cfg.MeshInvertedPyramidSlopeTerrainCfg
+) -> tuple[list[trimesh.Trimesh], np.ndarray]:
+	meshes_list, origin = pyramid_slope_terrain(difficulty, cfg)
+	# set symmetry
+	for mesh in meshes_list:
+		for vert in mesh.vertices : vert[2] *= -1
+	# flip normals
+	for mesh in meshes_list[-1:-4]:
+		for face in mesh.faces : face[:] = [face[1],face[0],face[2]]
+		
+	origin[2] *= -1
+	
+	return meshes_list, origin
 
 
 def random_grid_terrain(

@@ -12,18 +12,20 @@ tri-mesh primitive. Thus, this representation is more computationally and memory
 efficient than the height-field representation, but it is not as flexible.
 """
 
-from .mesh_terrains_cfg import (
-    MeshBoxTerrainCfg,
-    MeshFloatingRingTerrainCfg,
-    MeshGapTerrainCfg,
-    MeshInvertedPyramidStairsTerrainCfg,
-    MeshPitTerrainCfg,
-    MeshPlaneTerrainCfg,
-    MeshPyramidStairsTerrainCfg,
-    MeshRailsTerrainCfg,
-    MeshRandomGridTerrainCfg,
-    MeshRepeatedBoxesTerrainCfg,
-    MeshRepeatedCylindersTerrainCfg,
-    MeshRepeatedPyramidsTerrainCfg,
-    MeshStarTerrainCfg,
-)
+from .mesh_terrains_cfg import *
+
+# import (
+#     MeshBoxTerrainCfg,
+#     MeshFloatingRingTerrainCfg,
+#     MeshGapTerrainCfg,
+#     MeshInvertedPyramidStairsTerrainCfg,
+#     MeshPitTerrainCfg,
+#     MeshPlaneTerrainCfg,
+#     MeshPyramidStairsTerrainCfg,
+#     MeshRailsTerrainCfg,
+#     MeshRandomGridTerrainCfg,
+#     MeshRepeatedBoxesTerrainCfg,
+#     MeshRepeatedCylindersTerrainCfg,
+#     MeshRepeatedPyramidsTerrainCfg,
+#     MeshStarTerrainCfg,
+# )

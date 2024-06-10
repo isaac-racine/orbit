@@ -83,7 +83,7 @@ class TerrainImporterCfg:
     .. note::
         This parameter is used only when the ``terrain_type`` is ``"generator"`` or ``"plane"``.
     """
-
+    min_init_terrain_level: int = 0
     max_init_terrain_level: int | None = None
     """The maximum initial terrain level for defining environment origins. Defaults to None.
 
@@ -93,6 +93,14 @@ class TerrainImporterCfg:
 
     Note:
       This parameter is used only when sub-terrain origins are defined.
+    """
+
+    init_terrain_row: int | None = None
+    """ The initial terrain row used, None for spread among environments.
+    """
+    
+    linear_progression: bool = False
+    """ If True, once the max column of a row is reached (corresponds to max level), the agent moves to the next row and level 0
     """
 
     debug_vis: bool = False

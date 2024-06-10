@@ -15,7 +15,7 @@ from typing import Any, ClassVar
 
 from omni.isaac.version import get_version
 
-from omni.isaac.lab.managers import CommandManager, CurriculumManager, RewardManager, TerminationManager
+from omni.isaac.lab.managers import CommandManager, CurriculumManager, ConstraintManager, RewardManager, TerminationManager
 
 from .manager_based_env import ManagerBasedEnv
 from .rl_env_cfg import ManagerBasedRLEnvCfg
@@ -77,10 +77,15 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.render_mode = render_mode
 
         # initialize data and constants
+        # usefull constants
+        self.nZ = torch.tensor([0.0,0.0,-1.0], device=self.device)
+        self.Z = torch.tensor([0.0,0.0,1.0], device=self.device)
         # -- counter for curriculum
         self.common_step_counter = 0
         # -- init buffers
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        self.obs_buf	  = None
+        self.last_obs_buf = None
 
         # setup the action and observation spaces for Gym
         self._configure_gym_env_spaces()
@@ -120,6 +125,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- termination manager
         self.termination_manager = TerminationManager(self.cfg.terminations, self)
         print("[INFO] Termination Manager: ", self.termination_manager)
+        # -- constraint manager
+        self.constraint_manager = ConstraintManager(self.cfg.constraints, self)
+        print("[INFO] Constraint Manager: ", self.constraint_manager)
         # -- reward manager
         self.reward_manager = RewardManager(self.cfg.rewards, self)
         print("[INFO] Reward Manager: ", self.reward_manager)
@@ -174,8 +182,13 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.reset_buf = self.termination_manager.compute()
         self.reset_terminated = self.termination_manager.terminated
         self.reset_time_outs = self.termination_manager.time_outs
+        # -- constraint computation
+        self.constraint_buf = self.constraint_manager.compute(dt=self.step_dt)
+        constraint_reset = torch.rand_like(self.constraint_buf) < self.constraint_buf
+        self.reset_buf |= constraint_reset
+        self.reset_terminated |= constraint_reset
         # -- reward computation
-        self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
+        self.reward_buf = self.reward_manager.compute(dt=self.step_dt) * (1 - self.constraint_buf)  
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
@@ -320,6 +333,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.extras["log"].update(info)
         # -- action manager
         info = self.action_manager.reset(env_ids)
+        self.extras["log"].update(info)
+        # -- constraints manager
+        info = self.constraint_manager.reset(env_ids)
         self.extras["log"].update(info)
         # -- rewards manager
         info = self.reward_manager.reset(env_ids)
