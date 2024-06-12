@@ -316,13 +316,13 @@ class CurriculumCfg:
     #     func=mdp.modify_constraint_pmax, params={"term_name": "c_action_rate", "pmax_ini": 0.005, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
     # )
     joint_vel = CurriculumTermCfg(
-        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_vel", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
+        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_vel", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 15000, "num_steps_grad": 75000}
     )
     joint_acc = CurriculumTermCfg(
-        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_acc", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
+        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_acc", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 15000, "num_steps_grad": 75000}
     )
     joint_torque = CurriculumTermCfg(
-        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_torque", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
+        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_torque", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 15000, "num_steps_grad": 75000}
     )
 
 ##
