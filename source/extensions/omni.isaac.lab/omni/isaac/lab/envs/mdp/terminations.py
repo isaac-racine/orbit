@@ -84,7 +84,6 @@ def root_out_of_curriculum(
 	dist = torch.abs(asset.data.root_pos_w[:, :2] - env.scene.env_origins[:,:2])
 	return torch.logical_or(dist[:,0] > terrain.cfg.terrain_generator.size[0]/2, dist[:,1] > terrain.cfg.terrain_generator.size[1]/2)
 
-
 """
 Joint terminations.
 """

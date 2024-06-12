@@ -4,12 +4,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """Configuration for custom terrains."""
-
+import math
 import omni.isaac.lab.terrains as terrain_gen
 
 from ..terrain_generator_cfg import TerrainGeneratorCfg, FlatPatchSamplingCfg
-
-import math
 
 ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
 	size=(8.0, 8.0),
@@ -53,11 +51,21 @@ ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
 )
 """Rough terrains configuration."""
 
+
 PLATFORM_sz = 2.0
 BORDER_WIDTH = 0.0
 MAX_SLOPE = 33.0*math.pi/180.0
-VEL_CUSTOM_TERRAIN_CFG = TerrainGeneratorCfg(
-	size=(10.0, 10.0),
+TERRAIN_SZ = 10.0
+TARGET_SAMPLING_CFG = FlatPatchSamplingCfg(
+	num_patches=8,
+	patch_radius=[0.01],
+	max_height_diff=math.inf,
+	x_range = (-TERRAIN_SZ/2, TERRAIN_SZ/2),
+	y_range = (-TERRAIN_SZ/2, TERRAIN_SZ/2),
+	z_range = (-100, 100), # should be enough
+)
+CUSTOM_TERRAIN_CFG = TerrainGeneratorCfg(
+	size=(TERRAIN_SZ,TERRAIN_SZ),
 	border_width=5.0, # prevent robots from falling over the edge
 	num_rows=10,
 	num_cols=8,
@@ -114,68 +122,18 @@ VEL_CUSTOM_TERRAIN_CFG = TerrainGeneratorCfg(
 		),
 	},
 )
+for key in CUSTOM_TERRAIN_CFG.sub_terrains : CUSTOM_TERRAIN_CFG.sub_terrains[key].flat_patch_sampling={'target': TARGET_SAMPLING_CFG}
 
-TARGET_SAMPLING_CFG = FlatPatchSamplingCfg(
-	num_patches=5,
-	patch_radius=[0.5],
-	max_height_diff=math.inf
-)
-POS_CUSTOM_TERRAIN_CFG = TerrainGeneratorCfg(
-	size=(20.0, 20.0),
-	border_width=2.0,
-	num_rows=4,
-	num_cols=7,
-	horizontal_scale=0.1,
-	vertical_scale=0.005,
+NOISE_TERRAIN_CFG = TerrainGeneratorCfg(
+	size=(4.0,4.0),
+	difficulty_range=(1.0,1.0),
+	num_rows=1,
+	num_cols=1,
 	use_cache=False,
-	curriculum=True,
-	color_scheme='random',
+	curriculum=False,
 	sub_terrains={
-		"flat": terrain_gen.MeshPlaneTerrainCfg(
-			flat_patch_sampling={'target': TARGET_SAMPLING_CFG},
-		),
-		"random_rough": terrain_gen.HfRandomUniformTerrainCfg(
-			flat_patch_sampling={'target': TARGET_SAMPLING_CFG},
-			downsampled_scale=0.2,
-			noise_range=(0.0, 0.10),
-			noise_step=0.01,
-			border_width=2.0
-		),
-		"boxes": terrain_gen.MeshRandomGridTerrainCfg(
-			flat_patch_sampling={'target': TARGET_SAMPLING_CFG},
-			grid_width=0.45,
-			grid_height_range=(0.05, 0.2),
-			platform_width=2.0,
-		),
-		"hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
-			flat_patch_sampling={'target': TARGET_SAMPLING_CFG},
-			horizontal_scale=0.01,
-			slope_range=(0.0, 0.7),
-			platform_width=2.0,
-			border_width=2.0,
-		),
-		"pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
-			flat_patch_sampling={'target': TARGET_SAMPLING_CFG},
-			step_height_range=(0.05, 0.3),
-			step_width=0.3,
-			platform_width=3.0,
-			holes=False,
-			border_width=2.0,
-		),
-		"hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
-			flat_patch_sampling={'target': TARGET_SAMPLING_CFG},
-			horizontal_scale=0.01,
-			slope_range=(0.0, 0.7),
-			platform_width=2.0,
-			border_width=2.0,
-		),
-		"pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-			flat_patch_sampling={'target': TARGET_SAMPLING_CFG},
-			step_height_range=(0.05, 0.3),
-			step_width=0.3,
-			platform_width=3.0,
-			holes=False,
-			border_width=2.0,
-		),
-	},
+		"noise": terrain_gen.HfRandomUniformTerrainCfg(
+			noise_range=(0.02, 0.10), noise_step=0.02
+		)
+	}
 )

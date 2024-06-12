@@ -182,6 +182,13 @@ def body_incoming_wrench(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg) -> tor
     return link_incoming_forces.view(env.num_envs, -1)
 
 
+def binary_contact(env: BaseEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+	
+	iscontact = contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids] > 0.0
+	return iscontact.float()
+
+
 """
 Actions.
 """
