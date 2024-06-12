@@ -43,6 +43,8 @@ class ManagerBasedRLEnvCfg(ManagerBasedEnvCfg):
         The base :class:`ManagerBasedRLEnv` class does not use this flag directly. It is used by the environment
         wrappers to determine what type of done signal to send to the corresponding learning agent.
     """
+    store_last_obs: bool = False
+    last_obs_delay: int = 10
 
     episode_length_s: float = MISSING
     """Duration of an episode (in seconds).

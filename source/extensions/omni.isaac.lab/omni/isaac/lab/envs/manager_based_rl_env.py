@@ -201,7 +201,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             self.event_manager.apply(mode="interval", dt=self.step_dt)
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
-        self.obs_buf = self.observation_manager.compute()
+        if self.cfg.store_last_obs:
+            raise NotImplementedError("Observation history not implemented yet ;(") 
+        else:
+            self.obs_buf = self.observation_manager.compute()
 
         # return observations, rewards, resets and extras
         return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_time_outs, self.extras

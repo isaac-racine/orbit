@@ -286,8 +286,10 @@ class ConstraintTermCfg(ManagerTermBaseCfg):
     as input and return the reward signals as torch float tensors of
     shape (num_envs,).
     """
-
+    
     pmax: float = 1.0
+    pmax_ini: float = MISSING
+    pmax_end: float = MISSING
     """Max termination probability"""
     tau: float = 0.95
     """Decay rate used in the exponential moving average computation of cmax."""

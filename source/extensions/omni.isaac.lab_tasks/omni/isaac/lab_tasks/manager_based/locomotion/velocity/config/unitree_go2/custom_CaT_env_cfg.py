@@ -30,12 +30,25 @@ from omni.isaac.lab_assets.unitree import UNITREE_GO2_CFG
 
 DEBUG_VIS=False
 EPISODE_LENGTH=40.0
+SIM_DT=0.005
 
-UNWANTED_CONTACT_BODIES=["base",".*_hip","Head_.*", ".*_thigh",".*_calf"]
-ILLEGAL_CONTACT_BODIES=["base", "Head_.*"]
+UNWANTED_CONTACT_BODIES=["base",".*_hip","Head_.*",".*_calf"]
+ILLEGAL_CONTACT_BODIES=["base", "Head_.*",".*_thigh"]
 MAX_PUSHSPEED = 1.5
 MAX_COM_LINSPEED = 1.0
 MAX_COM_ANGSPEED = math.pi/2
+
+#Constraint Hyperparameters
+JOINT_TORQUE_LIMIT = 45 #N/m
+JOINT_VEL_LIMIT = 16 #rad/s
+JOINT_ACC_LIMIT = 800 #rad/s^2
+ACTION_RATE_LIMIT = 110 #rad/s
+BASE_ORIENTATION_LIMIT = 0.1 #rad
+CONTACT_FORCE_LIMIT = 50 #N
+HIP_ANGLE_LIMIT = 0.2 #rad
+AIR_TIME_TARGET = 0.25 #s
+NUMBER_OF_FOOT_CONTACT_TARGET = 2
+VELOCITY_TRACKING = 0.2 #m/s or 1 rad/s
 
 
 ##
@@ -218,25 +231,54 @@ class EventCfg:
 
 @configclass
 class ConstraintsCfg:
-    c_joint_acc = ConstraintTermCfg(func=mdp.c_joint_acc, params={"limval": 100.0}, pmax=0.25)
+    """Configuration for contraints."""
+
+    #  TODO: Trouver les probabilités de terminaison pour chacun des termes.(pmax=?)
+    #  TODO: Vérifier les unités qui sont utilisé.
+    
+    ############
+    # Option A #
+    ############
+
+    # Joint constraints
+    c_joint_torque = ConstraintTermCfg(func=mdp.c_joint_torque, params={"limval": JOINT_TORQUE_LIMIT}, pmax=0.05)
+    c_joint_vel = ConstraintTermCfg(func=mdp.c_joint_vel, params={"limval": JOINT_VEL_LIMIT}, pmax=0.05)
+    c_joint_acc = ConstraintTermCfg(func=mdp.c_joint_acc, params={"limval": JOINT_ACC_LIMIT}, pmax=0.05) # Verifier la limite des moteurs
+
+    # Other
+    #c_action_rate = ConstraintTermCfg(func=mdp.c_action_rate, params={"limval": ACTION_RATE_LIMIT}, pmax=0.05) # based on paper
+
+    # Style constraint (only on flat terrain)
+
+    #c_base_ori = ConstraintTermCfg(func=mdp.c_base_ori_xy, params={"limval": BASE_ORIENTATION_LIMIT}, pmax=0.25)
+    #c_hip_ori = ConstraintTermCfg(func=mdp.c_hip_ori, params={"limval": HIP_ANGLE_LIMIT}, pmax=0.25)
+    #c_air_time = ConstraintTermCfg(func=mdp.c_air_time, params={"limval": AIR_TIME_TARGET, "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*foot"),\
+    #                                                            "command_name": "base_velocity",}, pmax=0.25)
+    #c_nb_foot_contact = ConstraintTermCfg(func=mdp.c_nb_foot_contact, params={"limval": NUMBER_OF_FOOT_CONTACT_TARGET}, pmax=0.25)
+    #c_stand_still = ConstraintTermCfg(func=mdp.c_stand_still, params={"limval": ACTION_RATE_LIMIT}, pmax=0.25)
+
+
+    ############
+    # Option B #
+    ############
+    
+
 
 
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-    
-    # level 0
-    r_alive_sparse = RewardTermCfg(func=mdp.r_alive_sparse, weight=0.5,  curriculum_row_range = (0,0),  curriculum_dependency = True,)
-    
-    # level 1+
-    r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity",   "maxerr": MAX_COM_ANGSPEED    }, weight=0.75, curriculum_row_range = (1,-1), curriculum_dependency = True,) 
-    r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={                       "maxerr": 2.0                 }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
-    r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                                   "maxerr": 1.3*math.pi         }, weight=0.5,  curriculum_row_range = (1,-1), curriculum_dependency = True,)
-    
-    # any level
-    r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity", "maxerr": 1.3*MAX_COM_LINSPEED}, weight=1.5)
-    #r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin,               params={                     "maxerr": 800                 }, weight=2.0)
 
+    # Option A (task formulation through rewards)
+    r_track_lin_vel_xy_exp = RewardTermCfg(
+        func=mdp.track_lin_vel_xy_exp, weight=1.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
+    )
+    r_track_ang_vel_z_exp = RewardTermCfg(
+        func=mdp.track_ang_vel_z_exp, weight=0.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
+    )
+
+    #Option B (Task formulation through sof constraints)
+    # r = 1
 
 @configclass
 class TerminationsCfg:
@@ -245,10 +287,16 @@ class TerminationsCfg:
     out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
     time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
     
-    #base_contact = TerminationTermCfg(
-    #	func=mdp.illegal_contact,
-    #	params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
-    #)
+    robot_illegal_contact = TerminationTermCfg(
+    	func=mdp.illegal_contact,
+    	params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
+    )
+    
+    #Foot contact force
+
+
+
+
     #contact_full = TerminationTermCfg(
     #	func=mdp.illegal_contact,
     #	params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=UNWANTED_CONTACT_BODIES), "threshold": 1.0},
@@ -264,6 +312,18 @@ class CurriculumCfg:
     terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels_vel)
     #terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels_vel2)
 
+    # action_rate = CurriculumTermCfg(
+    #     func=mdp.modify_constraint_pmax, params={"term_name": "c_action_rate", "pmax_ini": 0.005, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
+    # )
+    joint_vel = CurriculumTermCfg(
+        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_vel", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
+    )
+    joint_acc = CurriculumTermCfg(
+        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_acc", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
+    )
+    joint_torque = CurriculumTermCfg(
+        func=mdp.modify_constraint_pmax, params={"term_name": "c_joint_torque", "pmax_ini": 0.05, "pmax_end" : 0.25, "num_steps": 10000, "num_steps_grad": 30000}
+    )
 
 ##
 # Environment configuration
@@ -295,7 +355,7 @@ class UnitreeGo2VelCustomEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = EPISODE_LENGTH
         
         # simulation settings
-        self.sim.dt = 0.005
+        self.sim.dt = SIM_DT
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
         

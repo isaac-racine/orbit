@@ -221,6 +221,8 @@ class SimulationContext(_SimulationContext):
             device=self.cfg.device,
         )
 
+        self.set_render_mode(self.RenderMode.NO_RENDERING)
+
     """
     Operations - New.
     """

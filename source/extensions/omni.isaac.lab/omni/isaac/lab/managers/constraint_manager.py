@@ -141,23 +141,24 @@ class ConstraintManager(ManagerBase):
 			value = torch.clip(term_cfg.func(self._env, **term_cfg.params), min=0)
 			
 			# check curriculum
-			if term_cfg.curriculum_dependency:
-				terrain = self._env.scene.terrain				
-				row_r = term_cfg.curriculum_row_range ; col_r = term_cfg.curriculum_col_range
-				lower_row, upper_row = (row_r[0], row_r[1] if row_r[1] != -1 else terrain.max_terrain_level-1)
-				lower_col, upper_col = (col_r[0], col_r[1] if col_r[1] != -1 else terrain.max_terrain_type-1)
-				curriculum_ok = torch.logical_and( 
-					torch.logical_and(lower_row <= terrain.terrain_levels, terrain.terrain_levels <= upper_row),
-					torch.logical_and(lower_col <= terrain.terrain_types, terrain.terrain_types <= upper_col)
-				)
+			# if term_cfg.curriculum_dependency:
+			# 	terrain = self._env.scene.terrain				
+			# 	row_r = term_cfg.curriculum_row_range ; col_r = term_cfg.curriculum_col_range
+			# 	lower_row, upper_row = (row_r[0], row_r[1] if row_r[1] != -1 else terrain.max_terrain_level-1)
+			# 	lower_col, upper_col = (col_r[0], col_r[1] if col_r[1] != -1 else terrain.max_terrain_type-1)
+			# 	curriculum_ok = torch.logical_and( 
+			# 		torch.logical_and(lower_row <= terrain.terrain_levels, terrain.terrain_levels <= upper_row),
+			# 		torch.logical_and(lower_col <= terrain.terrain_types, terrain.terrain_types <= upper_col)
+			# 	)
 				
-				value = torch.where(curriculum_ok, value, 0.0)
-			
+			# 	value = torch.where(curriculum_ok, value, 0.0)
+		
 			# update max constraint violation with moving exponential average. Average is across all envs for each constraint separately
 			cmax = torch.amax(value, dim=0)
 			self._c_max[term_name] = term_cfg.tau * self._c_max[term_name] + (1.0 - term_cfg.tau) * cmax
 			
 			# compute termination probability for the constraint
+			#print(f"Term: {term_name}, pmax: {term_cfg.pmax}")
 			self._prob_buf[term_name][:] = term_cfg.pmax * torch.clip(value / self._c_max[term_name], min=0,max=1)
 			self._prob_buf[term_name][:] = torch.where(torch.isnan(self._prob_buf[term_name]), 0.0, self._prob_buf[term_name]) # happens when 0/0 
 			
