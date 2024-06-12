@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from . import agents, flat_env_cfg, rough_env_cfg, custom_CaT_env_cfg
+from . import agents, custom_CaT_env_cfg, flat_env_cfg, rough_env_cfg
 
 ##
 # Register Gym environments.

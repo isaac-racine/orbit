@@ -35,7 +35,16 @@ def modify_reward_weight(env: ManagerBasedRLEnv, env_ids: Sequence[int], term_na
         term_cfg.weight = weight
         env.reward_manager.set_term_cfg(term_name, term_cfg)
 
-def modify_constraint_pmax(env: ManagerBasedRLEnv, env_ids: Sequence[int], term_name: str, pmax_ini: float, pmax_end: float, num_steps: int, num_steps_grad: int):
+
+def modify_constraint_pmax(
+    env: ManagerBasedRLEnv,
+    env_ids: Sequence[int],
+    term_name: str,
+    pmax_ini: float,
+    pmax_end: float,
+    num_steps: int,
+    num_steps_grad: int,
+):
     """Curriculum that modifies a constraint pmax over a given number of steps.
 
     Args:
@@ -52,7 +61,7 @@ def modify_constraint_pmax(env: ManagerBasedRLEnv, env_ids: Sequence[int], term_
 
         if step_offset <= num_steps_grad:
             fraction = step_offset / num_steps_grad
-            
+
             # Calculate the new pmax value
             new_pmax = pmax_ini + fraction * (pmax_end - pmax_ini)
 

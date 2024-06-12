@@ -200,8 +200,8 @@ class EventTermCfg(ManagerTermBaseCfg):
         This is only used if the mode is ``"interval"``.
     """
     curriculum_dependency: bool = False
-    curriculum_row_range: tuple[int, int] = (0,-1)
-    curriculum_col_range: tuple[int, int] = (0,-1)
+    curriculum_row_range: tuple[int, int] = (0, -1)
+    curriculum_col_range: tuple[int, int] = (0, -1)
     """Whether this term is applied only for certain terrain levels and types"""
 
     is_global_time: bool = False
@@ -264,10 +264,10 @@ class RewardTermCfg(ManagerTermBaseCfg):
     has_two: bool = False
     """The term has two weights"""
     weight2: float = MISSING
-    
+
     curriculum_dependency: bool = False
-    curriculum_row_range: tuple[int, int] = (0,-1)
-    curriculum_col_range: tuple[int, int] = (0,-1)
+    curriculum_row_range: tuple[int, int] = (0, -1)
+    curriculum_col_range: tuple[int, int] = (0, -1)
     """Whether this term is applied only for certain terrain levels and types"""
 
 
@@ -286,7 +286,7 @@ class ConstraintTermCfg(ManagerTermBaseCfg):
     as input and return the reward signals as torch float tensors of
     shape (num_envs,).
     """
-    
+
     pmax: float = 1.0
     pmax_ini: float = MISSING
     pmax_end: float = MISSING
@@ -295,9 +295,10 @@ class ConstraintTermCfg(ManagerTermBaseCfg):
     """Decay rate used in the exponential moving average computation of cmax."""
 
     curriculum_dependency: bool = False
-    curriculum_row_range: tuple[int, int] = (0,-1)
-    curriculum_col_range: tuple[int, int] = (0,-1)
+    curriculum_row_range: tuple[int, int] = (0, -1)
+    curriculum_col_range: tuple[int, int] = (0, -1)
     """Whether this term is applied only for certain terrain levels and types"""
+
 
 ##
 # Termination manager.

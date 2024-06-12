@@ -310,7 +310,7 @@ class TerrainImporter:
         # update terrain level for the envs
         self.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
 
-        if self.cfg.linear_progression :
+        if self.cfg.linear_progression:
             # robots that solve the last row are sent to a random one
             # robots that solve the last level are sent to the next row at level 0
             self.terrain_types[env_ids] = torch.where(
@@ -328,7 +328,7 @@ class TerrainImporter:
                 torch.randint_like(self.terrain_types[env_ids], self.max_terrain_type),
                 self.terrain_types[env_ids],
             )
-        else :
+        else:
             # robots that solve the last level are sent to a random one
             # the minimum level is zero
             self.terrain_levels[env_ids] = torch.where(
@@ -359,10 +359,12 @@ class TerrainImporter:
         # define all terrain levels and types available
         self.terrain_levels = torch.randint(0, max_init_level + 1, (num_envs,), device=self.device)
 
-        if self.cfg.init_terrain_row is not None :
-            self.terrain_types = torch.full((num_envs,), self.cfg.init_terrain_row, device=self.device, dtype=torch.long)
+        if self.cfg.init_terrain_row is not None:
+            self.terrain_types = torch.full(
+                (num_envs,), self.cfg.init_terrain_row, device=self.device, dtype=torch.long
+            )
 
-        else :
+        else:
             self.terrain_types = torch.div(
                 torch.arange(num_envs, device=self.device),
                 (num_envs / num_cols),

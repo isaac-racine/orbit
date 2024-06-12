@@ -8,8 +8,8 @@
 from __future__ import annotations
 
 import inspect
-import torch
 import math
+import torch
 import weakref
 from abc import abstractmethod
 from collections.abc import Sequence
@@ -178,9 +178,12 @@ class CommandTerm(ManagerTermBase):
         """
         # resample the time left before resampling
         if len(env_ids) != 0:
-             # resample the time left before resampling
-            self.time_left[env_ids] = math.inf if self.cfg.resampling_time_range[0] == self.cfg.resampling_time_range[1] == \
-                math.inf else self.time_left[env_ids].uniform_(*self.cfg.resampling_time_range)
+            # resample the time left before resampling
+            self.time_left[env_ids] = (
+                math.inf
+                if self.cfg.resampling_time_range[0] == self.cfg.resampling_time_range[1] == math.inf
+                else self.time_left[env_ids].uniform_(*self.cfg.resampling_time_range)
+            )
             # increment the command counter
             self.command_counter[env_ids] += 1
             # resample the command

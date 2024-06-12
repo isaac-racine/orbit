@@ -1,3 +1,8 @@
+# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Copyright (c) 2022-2024, The lab Project Developers.
 # All rights reserved.
 #
@@ -5,10 +10,9 @@
 
 from omni.isaac.lab.utils import configclass
 
-from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
+from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (  # RslRlPpoActorCriticRecurrentCfg,
     RslRlOnPolicyRunnerCfg,
     RslRlPpoActorCriticCfg,
-	RslRlPpoActorCriticRecurrentCfg,
     RslRlPpoAlgorithmCfg,
 )
 
@@ -40,6 +44,8 @@ class UnitreeGo2VelCustom1PPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
     )
+
+
 @configclass
 class UnitreeGo2VelCustom2PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
@@ -49,11 +55,11 @@ class UnitreeGo2VelCustom2PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
-        actor_hidden_dims=[512, 256, 128], # >= 4 layers has been found detrimental in literature
+        actor_hidden_dims=[512, 256, 128],  # >= 4 layers has been found detrimental in literature
         critic_hidden_dims=[512, 256, 128],
-		#rnn_hidden_size = 512,
-		#rnn_num_layers = 1,
-		#rnn_type = 'lstm',
+        # rnn_hidden_size = 512,
+        # rnn_num_layers = 1,
+        # rnn_type = 'lstm',
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(

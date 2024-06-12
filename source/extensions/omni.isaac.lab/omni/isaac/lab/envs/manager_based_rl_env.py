@@ -15,7 +15,13 @@ from typing import Any, ClassVar
 
 from omni.isaac.version import get_version
 
-from omni.isaac.lab.managers import CommandManager, CurriculumManager, ConstraintManager, RewardManager, TerminationManager
+from omni.isaac.lab.managers import (
+    CommandManager,
+    ConstraintManager,
+    CurriculumManager,
+    RewardManager,
+    TerminationManager,
+)
 
 from .manager_based_env import ManagerBasedEnv
 from .rl_env_cfg import ManagerBasedRLEnvCfg
@@ -77,13 +83,13 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.render_mode = render_mode
 
         # initialize data and constants
-        self.nZ = torch.tensor([0.0,0.0,-1.0], device=self.device)
-        self.Z = torch.tensor([0.0,0.0,1.0], device=self.device)
+        self.nZ = torch.tensor([0.0, 0.0, -1.0], device=self.device)
+        self.Z = torch.tensor([0.0, 0.0, 1.0], device=self.device)
         # -- counter for curriculum
         self.common_step_counter = 0
         # -- init buffers
         self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
-        self.obs_buf	  = None
+        self.obs_buf = None
         self.last_obs_buf = None
 
         # setup the action and observation spaces for Gym
@@ -187,7 +193,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.reset_buf |= constraint_reset
         self.reset_terminated |= constraint_reset
         # -- reward computation
-        self.reward_buf = self.reward_manager.compute(dt=self.step_dt) * (1 - self.constraint_buf)  
+        self.reward_buf = self.reward_manager.compute(dt=self.step_dt) * (1 - self.constraint_buf)
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
@@ -201,9 +207,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         if self.cfg.store_last_obs:
-            raise NotImplementedError("Observation history not implemented yet ;(") 
-        else:
-            self.obs_buf = self.observation_manager.compute()
+            raise NotImplementedError("Observation history not implemented yet ;(")
+        # else:
+        #     self.obs_buf = self.observation_manager.compute()
+        self.obs_buf = self.observation_manager.compute()
 
         # return observations, rewards, resets and extras
         return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_time_outs, self.extras

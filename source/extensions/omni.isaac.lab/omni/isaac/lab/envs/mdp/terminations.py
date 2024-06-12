@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.sensors import ContactSensor
+from omni.isaac.lab.terrains import TerrainImporter
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -71,18 +72,20 @@ def root_height_below_minimum(
     asset: RigidObject = env.scene[asset_cfg.name]
     return asset.data.root_pos_w[:, 2] < minimum_height
 
-def root_out_of_curriculum(
-	env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
-	"""Terminate when the asset's root position is outside the terrain.
-		Only usable with generator terrain.
-	"""
-	
-	# extract the used quantities (to enable type-hinting)
-	asset: RigidObject = env.scene[asset_cfg.name]
-	terrain: TerrainImporter = env.scene.terrain
-	dist = torch.abs(asset.data.root_pos_w[:, :2] - env.scene.env_origins[:,:2])
-	return torch.logical_or(dist[:,0] > terrain.cfg.terrain_generator.size[0]/2, dist[:,1] > terrain.cfg.terrain_generator.size[1]/2)
+
+def root_out_of_curriculum(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    """Terminate when the asset's root position is outside the terrain.
+    Only usable with generator terrain.
+    """
+
+    # extract the used quantities (to enable type-hinting)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    terrain: TerrainImporter = env.scene.terrain
+    dist = torch.abs(asset.data.root_pos_w[:, :2] - env.scene.env_origins[:, :2])
+    return torch.logical_or(
+        dist[:, 0] > terrain.cfg.terrain_generator.size[0] / 2, dist[:, 1] > terrain.cfg.terrain_generator.size[1] / 2
+    )
+
 
 """
 Joint terminations.

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import omni.isaac.lab.utils.math as math_utils
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.sensors import RayCaster
+from omni.isaac.lab.sensors import ContactSensor, RayCaster
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedRLEnv
@@ -182,11 +182,11 @@ def body_incoming_wrench(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg) -> tor
     return link_incoming_forces.view(env.num_envs, -1)
 
 
-def binary_contact(env: BaseEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
-	contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-	
-	iscontact = contact_sensor.data.current_contact_time[:,sensor_cfg.body_ids] > 0.0
-	return iscontact.float()
+def binary_contact(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+
+    iscontact = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids] > 0.0
+    return iscontact.float()
 
 
 """

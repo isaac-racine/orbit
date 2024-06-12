@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
+import random
 import scipy.spatial.transform as tf
 import trimesh
 from trimesh import transformations as T
-import random
 
 """
 Primitive functions to generate meshes.
@@ -46,44 +46,32 @@ def make_plane(size: tuple[float, float], height: float, center_zero: bool = Tru
     # return the tri-mesh and the position
     return plane_mesh
 
-def make_slope(angle: float, axis: tuple[float, float, float], size: tuple[float, float]) -> trimesh.Trimesh:
-	plane_mesh = make_plane(size, 0, True)
-	plane_mesh.apply_transform(T.rotation_matrix(angle, axis))
-	return plane_mesh
-
-def gen_uniform_steps_totsize(size, step_range):
-	vals = [0,]
-	while True:
-		vals.append(vals[-1] + random.uniform(*step_range))
-		if vals[-1] >= size:
-			vals[-1] = size
-			break
-	return vals
-
-def gen_uniform_steps_totnum(num, step_range):
-	vals = [0,]
-	for i in range(num-1) : vals.append(vals[-1] + random.uniform(*step_range))
-	return vals
-
-
 
 def make_slope(angle: float, axis: tuple[float, float, float], size: tuple[float, float]) -> trimesh.Trimesh:
-	plane_mesh = make_plane(size, 0, True)
-	plane_mesh.apply_transform(T.rotation_matrix(angle, axis))
-	return plane_mesh
+    plane_mesh = make_plane(size, 0, True)
+    plane_mesh.apply_transform(T.rotation_matrix(angle, axis))
+    return plane_mesh
+
 
 def gen_uniform_steps_totsize(size, step_range):
-	vals = [0,]
-	while True:
-		vals.append(vals[-1] + random.uniform(*step_range))
-		if vals[-1] >= size:
-			vals[-1] = size
-			break
-	return vals
+    vals = [
+        0,
+    ]
+    while True:
+        vals.append(vals[-1] + random.uniform(*step_range))
+        if vals[-1] >= size:
+            vals[-1] = size
+            break
+    return vals
+
+
 def gen_uniform_steps_totnum(num, step_range):
-	vals = [0,]
-	for i in range(num-1) : vals.append(vals[-1] + random.uniform(*step_range))
-	return vals
+    vals = [
+        0,
+    ]
+    for i in range(num - 1):
+        vals.append(vals[-1] + random.uniform(*step_range))
+    return vals
 
 
 def make_border(

@@ -98,7 +98,7 @@ class TerrainImporterCfg:
     init_terrain_row: int | None = None
     """ The initial terrain row used, None for spread among environments.
     """
-    
+
     linear_progression: bool = False
     """ If True, once the max column of a row is reached (corresponds to max level), the agent moves to the next row and level 0
     """

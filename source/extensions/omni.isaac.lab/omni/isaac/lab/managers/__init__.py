@@ -12,24 +12,24 @@ designed to be modular and can be easily extended to support new functionality.
 
 from .action_manager import ActionManager, ActionTerm
 from .command_manager import CommandManager, CommandTerm
+from .constraint_manager import ConstraintManager
 from .curriculum_manager import CurriculumManager
 from .event_manager import EventManager, RandomizationManager
 from .manager_base import ManagerBase, ManagerTermBase
 from .manager_term_cfg import (
     ActionTermCfg,
     CommandTermCfg,
+    ConstraintTermCfg,
     CurriculumTermCfg,
     EventTermCfg,
     ManagerTermBaseCfg,
     ObservationGroupCfg,
     ObservationTermCfg,
     RandomizationTermCfg,
-    ConstraintTermCfg,
     RewardTermCfg,
     TerminationTermCfg,
 )
 from .observation_manager import ObservationManager
-from .constraint_manager import ConstraintManager
 from .reward_manager import RewardManager
 from .scene_entity_cfg import SceneEntityCfg
 from .termination_manager import TerminationManager
