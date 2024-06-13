@@ -309,13 +309,32 @@ class TerrainImporter:
             return
         # update terrain level for the envs
         self.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
-        # robots that solve the last level are sent to a random one
-        # the minimum level is zero
-        self.terrain_levels[env_ids] = torch.where(
-            self.terrain_levels[env_ids] >= self.max_terrain_level,
-            torch.randint_like(self.terrain_levels[env_ids], self.max_terrain_level),
-            torch.clip(self.terrain_levels[env_ids], 0),
-        )
+        
+        if self.cfg.linear_progression :
+            # robots that solve the last level are sent to the next type at level 0
+            self.terrain_types[env_ids] = torch.where(
+                self.terrain_levels[env_ids] >= self.max_terrain_level,
+                self.terrain_types[env_ids] + 1,
+                self.terrain_types[env_ids],
+            )
+            self.terrain_levels[env_ids] = torch.where(
+                self.terrain_levels[env_ids] >= self.max_terrain_level,
+                0,
+                torch.clip(self.terrain_levels[env_ids], 0),
+            )
+            self.terrain_types[env_ids] = torch.where(
+                self.terrain_types[env_ids] >= self.max_terrain_type,
+                torch.randint_like(self.terrain_types[env_ids], self.max_terrain_type),
+                self.terrain_types[env_ids],
+            )
+        else :
+            # robots that solve the last level are sent to a random one
+            # the minimum level is zero
+            self.terrain_levels[env_ids] = torch.where(
+                self.terrain_levels[env_ids] >= self.max_terrain_level,
+                torch.randint_like(self.terrain_levels[env_ids], self.max_terrain_level),
+                torch.clip(self.terrain_levels[env_ids], 0),
+            )
         # update the env origins
         self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
 
@@ -334,13 +353,17 @@ class TerrainImporter:
             max_init_level = min(self.cfg.max_init_terrain_level, num_rows - 1)
         # store maximum terrain level possible
         self.max_terrain_level = num_rows
+        self.max_terrain_type = num_cols
         # define all terrain levels and types available
-        self.terrain_levels = torch.randint(0, max_init_level + 1, (num_envs,), device=self.device)
-        self.terrain_types = torch.div(
-            torch.arange(num_envs, device=self.device),
-            (num_envs / num_cols),
-            rounding_mode="floor",
-        ).to(torch.long)
+        self.terrain_levels = torch.randint(self.cfg.min_init_terrain_level, max_init_level + 1, (num_envs,), device=self.device)
+        if self.cfg.init_terrain_type is not None :
+            self.terrain_types = torch.full((num_envs,), self.cfg.init_terrain_type, device=self.device, dtype=torch.long)
+        else :
+            self.terrain_types = torch.div(
+                torch.arange(num_envs, device=self.device),
+                (num_envs / num_cols),
+                rounding_mode="floor",
+            ).to(torch.long)
         # create tensor based on number of environments
         env_origins = torch.zeros(num_envs, 3, device=self.device)
         env_origins[:] = origins[self.terrain_levels, self.terrain_types]

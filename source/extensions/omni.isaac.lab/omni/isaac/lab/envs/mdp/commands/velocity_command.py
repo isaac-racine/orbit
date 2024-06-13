@@ -10,6 +10,7 @@ from __future__ import annotations
 import torch
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
+from math import cos, sin
 
 import omni.isaac.lab.utils.math as math_utils
 from omni.isaac.lab.assets import Articulation
@@ -61,6 +62,7 @@ class UniformVelocityCommand(CommandTerm):
         # crete buffers to store the command
         # -- command: x vel, y vel, yaw vel, heading
         self.vel_command_b = torch.zeros(self.num_envs, 3, device=self.device)
+        self.vel_xy_w = torch.zeros(self.num_envs, 2, device=self.device)
         self.heading_target = torch.zeros(self.num_envs, device=self.device)
         self.is_heading_env = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
         self.is_standing_env = torch.zeros_like(self.is_heading_env)
@@ -118,6 +120,9 @@ class UniformVelocityCommand(CommandTerm):
             self.heading_target[env_ids] = r.uniform_(*self.cfg.ranges.heading)
             # update heading envs
             self.is_heading_env[env_ids] = r.uniform_(0.0, 1.0) <= self.cfg.rel_heading_envs
+        # world ref. for velocity
+        if self.cfg.vel_world:
+            self.vel_xy_w[env_ids,:2] = self.vel_command_b[env_ids,:2]
         # update standing envs
         self.is_standing_env[env_ids] = r.uniform_(0.0, 1.0) <= self.cfg.rel_standing_envs
 
@@ -138,6 +143,13 @@ class UniformVelocityCommand(CommandTerm):
                 min=self.cfg.ranges.ang_vel_z[0],
                 max=self.cfg.ranges.ang_vel_z[1],
             )
+        # Project world velocity target to base local frame
+        if self.cfg.vel_world:
+            c_ang = torch.cos(-self.robot.data.heading_w[env_ids])
+            s_ang = torch.sin(-self.robot.data.heading_w[env_ids])
+            # rotate vector
+            self.vel_command_b[env_ids,0] = self.vel_xy_w[env_ids,0]*c_ang - self.vel_xy_w[env_ids,1]*s_ang
+            self.vel_command_b[env_ids,1] = self.vel_xy_w[env_ids,0]*s_ang + self.vel_xy_w[env_ids,1]*c_ang
         # Enforce standing (i.e., zero velocity command) for standing envs
         # TODO: check if conversion is needed
         standing_env_ids = self.is_standing_env.nonzero(as_tuple=False).flatten()

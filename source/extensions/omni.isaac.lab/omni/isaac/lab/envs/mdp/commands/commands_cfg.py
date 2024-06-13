@@ -49,7 +49,10 @@ class UniformVelocityCommandCfg(CommandTermCfg):
     rel_heading_envs: float = MISSING
     """Probability threshold for environments where the robots follow the heading-based angular velocity command
     (the others follow the sampled angular velocity command)."""
-
+    
+    vel_world: bool = False
+    """The sampled velocity command is expressed in world frame."""
+    
     @configclass
     class Ranges:
         """Uniform distribution ranges for the velocity commands."""
