@@ -10,6 +10,7 @@ import hashlib
 import json
 from collections.abc import Iterable, Mapping
 from typing import Any
+from dataclasses import _MISSING_TYPE
 
 from .array import TENSOR_TYPE_CONVERSIONS, TENSOR_TYPES
 from .string import callable_to_string, string_to_callable
@@ -54,6 +55,46 @@ def class_to_dict(obj: object) -> dict[str, Any]:
         # check if attribute is a dictionary
         elif hasattr(value, "__dict__") or isinstance(value, dict):
             data[key] = class_to_dict(value)
+        else:
+            data[key] = value
+    return data
+
+def class_to_dict_ignore(obj: object) -> dict[str, Any]:
+    """Convert an object into dictionary recursively.
+
+    Note:
+        Ignores all names starting with "__" (i.e. built-in methods).
+		Ignores MISSING values.
+
+    Args:
+        obj: An instance of a class to convert.
+
+    Raises:
+        ValueError: When input argument is not an object.
+
+    Returns:
+        Converted dictionary mapping.
+    """
+    # check that input data is class instance
+    if not hasattr(obj, "__class__"):
+        raise ValueError(f"Expected a class instance. Received: {type(obj)}.")
+    # convert object to dictionary
+    if isinstance(obj, dict):
+        obj_dict = obj
+    else:
+        obj_dict = obj.__dict__
+    # convert to dictionary
+    data = dict()
+    for key, value in obj_dict.items():
+        # disregard builtin attributes
+        if key.startswith("__") or isinstance(value, _MISSING_TYPE):
+            continue
+        # check if attribute is callable -- function
+        if callable(value):
+            data[key] = callable_to_string(value)
+        # check if attribute is a dictionary
+        elif hasattr(value, "__dict__") or isinstance(value, dict):
+            data[key] = class_to_dict_ignore(value)
         else:
             data[key] = value
     return data

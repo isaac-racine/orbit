@@ -11,9 +11,9 @@ from copy import deepcopy
 from dataclasses import MISSING, Field, dataclass, field, replace
 from typing import Any, ClassVar
 
-from .dict import class_to_dict, update_class_from_dict
+from .dict import class_to_dict, class_to_dict_ignore, update_class_from_dict
 
-_CONFIGCLASS_METHODS = ["to_dict", "from_dict", "replace", "copy"]
+_CONFIGCLASS_METHODS = ["to_dict", "to_dict_ignore", "from_dict", "replace", "copy"]
 """List of class methods added at runtime to dataclass."""
 
 """
@@ -94,6 +94,7 @@ def configclass(cls, **kwargs):
         setattr(cls, "__post_init__", _custom_post_init)
     # add helper functions for dictionary conversion
     setattr(cls, "to_dict", _class_to_dict)
+    setattr(cls, "to_dict_ignore", _class_to_dict_ignore)
     setattr(cls, "from_dict", _update_class_from_dict)
     setattr(cls, "replace", _replace_class_with_kwargs)
     setattr(cls, "copy", _copy_class)
@@ -117,6 +118,15 @@ def _class_to_dict(obj: object) -> dict[str, Any]:
         Converted dictionary mapping.
     """
     return class_to_dict(obj)
+
+
+def _class_to_dict_ignore(obj: object) -> dict[str, Any]:
+    """Convert an object into dictionary recursively. Ignores MISSING values.
+
+    Returns:
+        Converted dictionary mapping.
+    """
+    return class_to_dict_ignore(obj)
 
 
 def _update_class_from_dict(obj, data: dict[str, Any]) -> None:

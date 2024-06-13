@@ -41,7 +41,7 @@ arm_joints = UNITREE_GO2_Z1_CFG.actuators["base_arm"].joint_names_expr
 
 MAX_COM_LINSPEED = 1.5
 MAX_COM_ANGSPEED = math.pi/2
-MAX_PUSHSPEED = 1.5
+MAX_PUSHSPEED = 0.5
 MAX_EE_Z = 1.0
 TERRAIN_SZ = 4.0 # overwrite
 
@@ -52,26 +52,9 @@ USE_HEIGHT_SCAN = False
 # Scene definition
 ##
 
-flat_terrain = TerrainImporterCfg(
-	prim_path="/World/ground",
-	terrain_type="plane",
-	collision_group=-1,
-	physics_material=sim_utils.RigidBodyMaterialCfg(
-		friction_combine_mode="multiply",
-		restitution_combine_mode="multiply",
-		static_friction=1.0,
-		dynamic_friction=1.0,
-	),
-	visual_material=sim_utils.MdlFileCfg(
-		mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-		project_uvw=True,
-	),
-	debug_vis=DEBUG_VIS,
-)
 #flat_terrain = TerrainImporterCfg(
 #	prim_path="/World/ground",
-#	terrain_type="usd",
-#	usd_path="omniverse://localhost/Projects/random_terrain.usd",
+#	terrain_type="plane",
 #	collision_group=-1,
 #	physics_material=sim_utils.RigidBodyMaterialCfg(
 #		friction_combine_mode="multiply",
@@ -85,6 +68,23 @@ flat_terrain = TerrainImporterCfg(
 #	),
 #	debug_vis=DEBUG_VIS,
 #)
+flat_terrain = TerrainImporterCfg(
+	prim_path="/World/ground",
+	terrain_type="usd",
+	usd_path="omniverse://localhost/Projects/random_terrain.usd",
+	collision_group=-1,
+	physics_material=sim_utils.RigidBodyMaterialCfg(
+		friction_combine_mode="multiply",
+		restitution_combine_mode="multiply",
+		static_friction=1.0,
+		dynamic_friction=1.0,
+	),
+	visual_material=sim_utils.MdlFileCfg(
+		mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
+		project_uvw=True,
+	),
+	debug_vis=DEBUG_VIS,
+)
 
 curriculum_terrain = TerrainImporterCfg(
 	prim_path="/World/ground",
@@ -147,7 +147,7 @@ class VelSceneCfg(InteractiveSceneCfg):
 	sky_light = AssetBaseCfg(
 		prim_path="/World/skyLight",
 		spawn=sim_utils.DomeLightCfg(
-			intensity=750.0,
+			intensity=3000.0,
 			texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
 		),
 	)
@@ -172,7 +172,7 @@ class FlatCommandsCfg:
 		resampling_time_range=(FLAT_EPISODE_LENGTH, FLAT_EPISODE_LENGTH),
 		rel_standing_envs=0.02,
 		rel_heading_envs=1.0,
-		heading_command=True,
+		heading_command=False,
 		heading_control_stiffness=0.5,
 		debug_vis=DEBUG_VIS,
 		ranges=mdp.UniformVelocityCommandCfg.Ranges(
@@ -180,6 +180,10 @@ class FlatCommandsCfg:
 			lin_vel_y=(-MAX_COM_LINSPEED, MAX_COM_LINSPEED),
 			ang_vel_z=(-MAX_COM_ANGSPEED, MAX_COM_ANGSPEED),
 			heading=(-math.pi, math.pi)
+			#lin_vel_x=(0.5, 0.5),
+			#lin_vel_y=(-0.0, 0.0),
+			#ang_vel_z=(-MAX_COM_ANGSPEED, MAX_COM_ANGSPEED),
+			#heading=(-0.0, 0.0)
 		)
 	)
 @configclass
@@ -283,7 +287,7 @@ class FlatEventCfg:
 	push_robot = EventTermCfg(
 		func=mdp.push_by_setting_velocity,
 		mode="interval",
-		interval_range_s=(3.0, FLAT_EPISODE_LENGTH),
+		interval_range_s=(4.0, FLAT_EPISODE_LENGTH),
 		params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}}
 	)
 @configclass
@@ -349,14 +353,30 @@ class FlatRewardsCfg:
 	r_com_linvel_lin = RewardTermCfg(func=mdp.r_com_linvel_lin, params={"command_name": "base_velocity",               "maxerr": 1.3*MAX_COM_LINSPEED}, weight=3.0)
 	r_com_angvel_lin = RewardTermCfg(func=mdp.r_com_angvel_lin, params={"command_name": "base_velocity",               "maxerr": MAX_COM_ANGSPEED    }, weight=3.0)
 	
-	r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin, params={                                                 "maxerr": 4500                }, weight=1.5)
-	r_action_rate_lin = RewardTermCfg(func=mdp.r_action_rate_lin, params={                                             "maxerr": 2.0*math.pi         }, weight=1.5)
-	r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={                                   "maxerr": 2.0                 }, weight=1.0)
-	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                                               "maxerr": 2.0*math.pi         }, weight=0.5)
+	r_joint_acc_lin = RewardTermCfg(func=mdp.r_joint_acc_lin, params={                                                 "maxerr": 4500                }, weight=1.0)
+	r_action_rate_lin = RewardTermCfg(func=mdp.r_action_rate_lin, params={                                             "maxerr": 2.0*math.pi         }, weight=1.0)
+	r_joint_power_lin = RewardTermCfg(func=mdp.r_joint_power_lin, params={                                             "maxerr": 3000                }, weight=1.0)
+	
+	r_gait = RewardTermCfg(
+		func=mdp.GaitReward,
+		weight=0.0,#weight=10.0,
+		params={
+			"std": 0.1,
+			"max_err": 0.2,
+			"velocity_threshold": 0.5,
+			"synced_feet_pair_names": (("FL_foot", "RR_foot"), ("FR_foot", "RL_foot")),
+			"asset_cfg": SceneEntityCfg("robot"),
+			"sensor_cfg": SceneEntityCfg("contact_sensor"),
+			"command_name": "base_velocity",
+		},
+	)
+	
+	#r_flat_orientation_lin = RewardTermCfg(func=mdp.r_flat_orientation_lin, params={                                   "maxerr": 2.0                 }, weight=1.0)
+	r_joint_pose_lin = RewardTermCfg(func=mdp.r_joint_pose_lin, params={                                               "maxerr": 2.0*math.pi         }, weight=2.0)
 	r_acc_lin = RewardTermCfg(func=mdp.r_acc_lin, params={                                                             "maxerr": 5000                }, weight=1.0)
-	r_height_linmax = RewardTermCfg(func=mdp.r_height_linmax, params={                                                 "maxerr": 0.5                 }, weight=1.0)
+	#r_height_linmax = RewardTermCfg(func=mdp.r_height_linmax, params={                                                 "maxerr": 0.5                 }, weight=1.0)
 	r_nbcontact_lin = RewardTermCfg(
-		func=mdp.r_nbcontact_lin, params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES_L)},                        weight=1.0)
+		func=mdp.r_nbcontact_lin, params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES_L+UNWANTED_CONTACT_BODIES_H)}, weight=2.0)
 	
 @configclass
 class CurriculumRewardsCfg:
@@ -376,26 +396,25 @@ class CurriculumRewardsCfg:
 @configclass
 class FlatTerminationsCfg:
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
-	base_contact = TerminationTermCfg(
-		func=mdp.illegal_contact,
-		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES_H), "threshold": 1.0},
-	)
+	#base_contact = TerminationTermCfg(
+	#	func=mdp.illegal_contact,
+	#	params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=UNWANTED_CONTACT_BODIES_H), "threshold": 1.0},
+	#)
 @configclass
 class CurriculumTerminationsCfg:
 	out_of_bounds = TerminationTermCfg(func=mdp.root_out_of_curriculum, time_out=True)
 	time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
-	base_contact = TerminationTermCfg(
-		func=mdp.illegal_contact,
-		params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
-	)
+	#base_contact = TerminationTermCfg(
+	#	func=mdp.illegal_contact,
+	#	params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
+	#)
 
 
 @configclass
-class NoCurriculumCfg : pass
+class FlatCurriculumCfg:
+	pass
 @configclass
-class CurriculumCfg:
-	"""Curriculum terms for the MDP."""
-
+class CurriculumCurriculumCfg:
 	terrain_levels = CurriculumTermCfg(func=mdp.terrain_levels)
 
 
@@ -442,7 +461,7 @@ class FlatEnvCfg(EnvCfg):
 	rewards = FlatRewardsCfg()
 	terminations = FlatTerminationsCfg()
 	events = FlatEventCfg()
-	curriculum = NoCurriculumCfg()
+	curriculum = FlatCurriculumCfg()
 	
 	episode_length_s = FLAT_EPISODE_LENGTH
 	
@@ -463,36 +482,40 @@ class CurriculumEnvCfg(EnvCfg):
 	rewards = CurriculumRewardsCfg()
 	terminations = CurriculumTerminationsCfg()
 	events = CurriculumEventCfg()
-	curriculum = CurriculumCfg()
+	curriculum = CurriculumCurriculumCfg()
 	
 	episode_length_s = CURRICULUM_EPISODE_LENGTH
 
 
 @configclass
-class CurriculumEnvCfg_PlayControl(CurriculumEnvCfg):
+class FlatEnvCfg_PlayControl(FlatEnvCfg):
 	def __post_init__(self):
 		# post init of parent
 		super().__post_init__()
 		
 		self.episode_length_s = 3600
 		
+		# disable randomization for play
+		self.observations.policy.enable_corruption = False
+		# remove random pushing event
+		self.events.base_external_force_torque = None
+		self.events.push_robot = None
+		# add contact termination
+		#self.terminations.play_contact = TerminationTermCfg(
+		#	func=mdp.illegal_contact,
+		#	params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=ILLEGAL_CONTACT_BODIES), "threshold": 1.0},
+		#)
+		
+		self.commands.base_velocity.resampling_time_range = (self.episode_length_s+1, self.episode_length_s+1)
+@configclass
+class CurriculumEnvCfg_PlayControl(FlatEnvCfg_PlayControl):
+	def __post_init__(self):
+		# post init of parent
+		super().__post_init__()
+
 		self.scene.terrain.terrain_generator.num_rows = 5
 		#self.scene.terrain.terrain_generator.size = (8.0,8.0)
 		self.scene.terrain.min_init_terrain_level=0
 		self.scene.terrain.max_init_terrain_level=0
 		self.curriculum.terrain_levels = None
 		self.terminations.out_of_bounds = None
-		
-		# disable randomization for play
-		self.observations.policy.enable_corruption = False
-		# remove random pushing event
-		self.events.base_external_force_torque = None
-		self.events.push_robot = None
-		
-		self.episode_length_s = 3600
-		
-		self.commands.base_velocity = mdp.UserVelocityCommandCfg(
-			asset_name="robot",
-			debug_vis=DEBUG_VIS,
-			resampling_time_range=(math.inf, math.inf), # not used 
-		)

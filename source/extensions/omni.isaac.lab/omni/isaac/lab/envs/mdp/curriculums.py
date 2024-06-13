@@ -34,3 +34,14 @@ def modify_reward_weight(env: ManagerBasedRLEnv, env_ids: Sequence[int], term_na
         # update term settings
         term_cfg.weight = weight
         env.reward_manager.set_term_cfg(term_name, term_cfg)
+
+def set_r_w_at(env: ManagerBasedRLEnv, env_ids: Sequence[int], weights: dict[float], num_steps: int):
+	# Set reward weights when steps reach a certain number
+	if env.common_step_counter == num_steps:
+		print("Weights modification via curriculum !")
+		for term_name in weights:
+			# obtain term settings
+			term_cfg = env.reward_manager.get_term_cfg(term_name)
+			# update term settings
+			term_cfg.weight = weights[term_name]
+			env.reward_manager.set_term_cfg(term_name, term_cfg)

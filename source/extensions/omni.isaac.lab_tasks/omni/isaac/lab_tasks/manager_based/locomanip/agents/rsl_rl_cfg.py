@@ -44,7 +44,7 @@ class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
 	num_steps_per_env = 24
 	max_iterations = 10000
 	save_interval = 100
-	experiment_name = "unitree_go2_rough"
+	experiment_name = "locomanip"
 	empirical_normalization = False
 	policy = RslRlPpoActorCriticCfg(
 		init_noise_std=1.0,
