@@ -176,7 +176,7 @@ UNITREE_GO2_CFG = ArticulationCfg(
 )
 """Configuration of Unitree Go2 using DC-Motor actuator model."""
 
-UNITREE_GO2_CFG = ArticulationCfg(
+UNITREE_GO2_Z1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=f"/home/isaac/Omniverse/IsaacLab/Quadruped_Model/Unitree/go2z1.usd",
         activate_contact_sensors=True,
