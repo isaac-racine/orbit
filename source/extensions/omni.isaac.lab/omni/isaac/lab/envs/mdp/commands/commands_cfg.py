@@ -125,6 +125,38 @@ class UniformPoseCommandCfg(CommandTermCfg):
     ranges: Ranges = MISSING
     """Ranges for the commands."""
 
+@configclass
+class UniformPoseSphereCommandCfg(CommandTermCfg):
+    """Configuration for uniform pose command generator."""
+
+    class_type: type = UniformPoseCommand
+
+    asset_name: str = MISSING
+    """Name of the asset in the environment for which the commands are generated."""
+    body_name: str = MISSING
+    """Name of the body in the asset for which the commands are generated."""
+
+    make_quat_unique: bool = False
+    """Whether to make the quaternion unique or not. Defaults to False.
+
+    If True, the quaternion is made unique by ensuring the real part is positive.
+    """
+
+    @configclass
+    class Ranges:
+        """Uniform distribution ranges for the pose commands."""
+        #sphere
+        l_radius: tuple[float, float] = MISSING  # min max [m]
+        s_pitch: tuple[float, float] = MISSING  # min max [rad] 
+        s_yaw: tuple[float, float] = MISSING  # min max [rad]
+        #orientation
+        roll: tuple[float, float] = MISSING  # min max [rad]
+        pitch: tuple[float, float] = MISSING  # min max [rad]
+        yaw: tuple[float, float] = MISSING  # min max [rad]
+
+    ranges: Ranges = MISSING
+    """Ranges for the commands."""
+
 
 @configclass
 class UniformPose2dCommandCfg(CommandTermCfg):
