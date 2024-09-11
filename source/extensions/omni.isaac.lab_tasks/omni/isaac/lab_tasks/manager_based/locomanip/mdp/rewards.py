@@ -8,10 +8,11 @@ from __future__ import annotations
 import torch
 from typing import TYPE_CHECKING
 
+from omni.isaac.lab.assets import RigidObject, Articulation
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.sensors import ContactSensor
 
-from omni.isaac.lab.utils.math import combine_frame_transforms, quat_error_magnitude, quat_mul
+from omni.isaac.lab.utils.math import combine_frame_transforms, quat_error_magnitude, quat_mul, quat_rotate_inverse, yaw_quat
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -93,7 +94,7 @@ def track_lin_vel_x_yaw_frame(
     asset = env.scene[asset_cfg.name]
     vel_x_yaw = quat_rotate_inverse(yaw_quat(asset.data.root_quat_w), asset.data.root_lin_vel_w[:, :3])
     lin_vel_x_error = torch.sum(
-        torch.abs(vel_x_yaw[:, 0] - env.command_manager.get_command(command_name)[:, 0]), dim=1
+        torch.abs(vel_x_yaw[:, 0] - env.command_manager.get_command(command_name)[:, 0]), dim=-1
     )
     return -lin_vel_x_error
 
@@ -141,7 +142,7 @@ def position_command_error(env: ManagerBasedRLEnv, command_name: str, asset_cfg:
     curr_pos_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], :3]  # type: ignore
     return torch.norm(curr_pos_w - des_pos_w, dim=1)
 
-def track_pose_orientation(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg) -> torch.Tensor:
+def track_pose_orientation(env: ManagerBasedRLEnv, command_name: str, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot",body_names='gripperStator')) -> torch.Tensor:
     """Penalize tracking pose and orientation error using shortest path.
 
     The function computes the pose and orientation error between the desired pose and orientation (from the command) and the
@@ -157,8 +158,12 @@ def track_pose_orientation(env: ManagerBasedRLEnv, command_name: str, asset_cfg:
     # obtain the desired and current positions
     des_pos_b = command[:, :3]
     des_pos_w, _ = combine_frame_transforms(asset.data.root_state_w[:, :3], asset.data.root_state_w[:, 3:7], des_pos_b) #verify if ok
-    curr_pos_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], :3]  # type: ignore
+    curr_pos_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], :3] # type: ignore
 
+
+    # print(curr_pos_w)
+    # print('-------------')
+    # print(des_pos_w)
     err_pos = torch.square(torch.norm(curr_pos_w - des_pos_w, dim=1))
 
     #ORIENTATION

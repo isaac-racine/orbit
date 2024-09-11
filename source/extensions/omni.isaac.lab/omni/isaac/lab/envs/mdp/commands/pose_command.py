@@ -210,6 +210,7 @@ class UniformPoseSphereCommand(CommandTerm):
         # create buffers
 
         self.pose_sphere_command = torch.zeros(self.num_envs, 3, device=self.device) # 
+        self.pose_p_end_w = torch.zeros(self.num_envs, 3, device=self.device)
 
         # -- commands: (x, y, z, qw, qx, qy, qz) in root frame
         self.pose_command_b = torch.zeros(self.num_envs, 7, device=self.device)
@@ -242,6 +243,9 @@ class UniformPoseSphereCommand(CommandTerm):
     """
 
     def _update_metrics(self):
+
+
+
         # transform command from base frame to simulation world frame
         self.pose_command_w[:, :3], self.pose_command_w[:, 3:] = combine_frame_transforms(
             self.robot.data.root_pos_w,
@@ -249,6 +253,10 @@ class UniformPoseSphereCommand(CommandTerm):
             self.pose_command_b[:, :3],
             self.pose_command_b[:, 3:],
         )
+
+        
+
+
         # compute the error
         pos_error, rot_error = compute_pose_error(
             self.pose_command_w[:, :3],
