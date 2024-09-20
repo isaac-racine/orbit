@@ -258,6 +258,10 @@ class ObservationManager(ManagerBase):
             # add value to list
             group_obs[name] = obs
 
+        for key, tensor in group_obs.items():
+            if torch.isnan(tensor).any():
+                print(f"NaN values found in {key}")   
+
         # concatenate all observations in the group together
         if self._group_obs_concatenate[group_name]:
             return torch.cat(list(group_obs.values()), dim=-1)

@@ -71,60 +71,6 @@ USE_CONTACT_SEN = False
 # Scene definition
 ##
 
-# flat_terrain = TerrainImporterCfg(
-#     prim_path="/World/ground",
-#     terrain_type="plane",
-#     collision_group=-1,
-#     physics_material=sim_utils.RigidBodyMaterialCfg(
-#         friction_combine_mode="multiply",
-#         restitution_combine_mode="multiply",
-#         static_friction=1.0,
-#         dynamic_friction=1.0,
-#     ),
-#     visual_material=sim_utils.MdlFileCfg(
-#         mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-#         project_uvw=True,
-#     ),
-#     debug_vis=DEBUG_VIS,
-# )
-
-# terrain = TerrainImporterCfg(
-# 	prim_path="/World/ground",
-# 	terrain_type="usd",
-# 	usd_path="omniverse://localhost/Projects/random_terrain.usd",
-# 	collision_group=-1,
-# 	physics_material=sim_utils.RigidBodyMaterialCfg(
-# 		friction_combine_mode="multiply",
-# 		restitution_combine_mode="multiply",
-# 		static_friction=1.0,
-# 		dynamic_friction=1.0,
-# 	),
-# 	visual_material=sim_utils.MdlFileCfg(
-# 		mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-# 		project_uvw=True,
-# 	),
-# 	debug_vis=DEBUG_VIS,
-# )
-
-# curriculum_terrain = TerrainImporterCfg(
-# 	prim_path="/World/ground",
-# 	terrain_type="generator",
-# 	terrain_generator=CUSTOM_TERRAIN_CFG.replace(size=(TERRAIN_SZ,TERRAIN_SZ)),
-# 	max_init_terrain_level=0,
-# 	collision_group=-1,
-# 	physics_material=sim_utils.RigidBodyMaterialCfg(
-# 		friction_combine_mode="multiply",
-# 		restitution_combine_mode="multiply",
-# 		static_friction=1.0,
-# 		dynamic_friction=1.0,
-# 	),
-# 	visual_material=sim_utils.MdlFileCfg(
-# 		mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-# 		project_uvw=True,
-# 	),
-# 	debug_vis=DEBUG_VIS,
-# )
-
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
     """Configuration for the terrain scene with a legged robot."""
@@ -289,10 +235,6 @@ class ObservationsCfg:
         base_ang_vel = ObservationTermCfg(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
 
         #base_lin_vel = ObservationTermCfg(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-        # projected_gravity = ObservationTermCfg(
-        #     func=mdp.projected_gravity,
-        #     noise=Unoise(n_min=-0.05, n_max=0.05),
-        # )
         
         #Arm State R12 (joint pose and velocity) (maybe R14)
         #Leg State R28 (joint pos, joint vel, foot contact)
@@ -312,7 +254,10 @@ class ObservationsCfg:
 
         #Environment extrinsics R20 (...) for sim-to-real transfer
 
-
+        projected_gravity = ObservationTermCfg(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
 
         #OTHER
         #
@@ -344,7 +289,7 @@ class EventCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
             "static_friction_range": (0.8, 0.8),
             "dynamic_friction_range": (0.6, 0.6),
-            "restitution_range": (0.0, 0.5),
+            "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
     )
@@ -357,37 +302,38 @@ class EventCfg:
             "operation": "add"
         },
     )
-    # reset
     reset_base = EventTermCfg(
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
             "velocity_range": {
-                "x": (0.0, 0.0),
-                "y": (0.0, 0.0),
-                "z": (0.0, 0.0),
-                "roll": (0.0, 0.0),
-                "pitch": (0.0, 0.0),
-                "yaw": (0.0, 0.0),
-            }
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
+                "yaw": (-0.5, 0.5),
+            },
         },
     )
+
     reset_robot_joints = EventTermCfg(
         func=mdp.reset_joints_by_scale,
         mode="reset",
         params={
-            "position_range": (1.0, 1.0),
+            "position_range": (0.5, 1.5),
             "velocity_range": (0.0, 0.0),
         },
     )
+
     # interval
-    # push_robot = EventTermCfg(
-    #     func=mdp.push_by_setting_velocity,
-    #     mode="interval",
-    #     interval_range_s=(4.0, _EPISODE_LENGTH),
-    #     params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}}
-    # )
+    push_robot = EventTermCfg(
+        func=mdp.push_by_setting_velocity,
+        mode="interval",
+        interval_range_s=(10.0, 15.0),
+        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+    )
 
 
 @configclass
@@ -412,6 +358,10 @@ class RewardsCfg:
                                                                                "asset_cfg": SceneEntityCfg("robot", body_names="gripperStator")}, weight=0.5)
     r_manip_energy = RewardTermCfg(func=mdp.r_joint_arm_power, weight=0.004)
     # r_manip_alive = 0
+
+    # -- optional penalties
+    # flat_orientation_l2 = RewardTermCfg(func=mdp.flat_orientation_l2, weight=0.0)
+    # dof_pos_limits = RewardTermCfg(func=mdp.joint_pos_limits, weight=0.0)
 
 
 @configclass
