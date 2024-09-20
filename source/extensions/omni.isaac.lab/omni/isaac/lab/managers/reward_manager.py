@@ -267,7 +267,6 @@ class ModifiedRewardManager(RewardManager):
             value = term_cfg.func(self._env, **term_cfg.params) * term_cfg.weight * dt
             # update total reward
             self._reward_buf += value
-            print(self._reward_buf)
             # update episodic sum
             self._episode_sums[name] += value
 

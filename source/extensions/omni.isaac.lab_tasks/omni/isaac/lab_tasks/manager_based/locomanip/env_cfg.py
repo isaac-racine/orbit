@@ -112,6 +112,7 @@ class MySceneCfg(InteractiveSceneCfg):
         track_pose=True
     ) if USE_CONTACT_SEN else None
 
+    contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
     # frame
     ee_frame = FrameTransformerCfg(
@@ -191,14 +192,10 @@ class CommandsCfg:
         debug_vis=DEBUG_VIS,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(-MAX_CMD_LINSPEED, MAX_CMD_LINSPEED),
-            #lin_vel_y=(-MAX_CMD_LINSPEED, MAX_CMD_LINSPEED),
-            lin_vel_y=(-0.0, 0.0),
+            lin_vel_y=(-MAX_CMD_LINSPEED, MAX_CMD_LINSPEED),
+            #lin_vel_y=(-0.0, 0.0),
             ang_vel_z=(-MAX_CMD_YAWSPEED, MAX_CMD_YAWSPEED),
             heading=(-math.pi, math.pi)
-            #lin_vel_x=(0.5, 0.5),
-            #lin_vel_y=(-0.0, 0.0),
-            #ang_vel_z=(-MAX_CMD_ANGSPEED, MAX_CMD_ANGSPEED),
-            #heading=(-0.0, 0.0)
         )
     )
 
@@ -368,6 +365,15 @@ class RewardsCfg:
 class TerminationsCfg:
     time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
 
+    base_contact = TerminationTermCfg(
+        func=mdp.illegal_contact,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
+    )
+    base_contact = TerminationTermCfg(
+        func=mdp.illegal_contact,
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="link03"), "threshold": 1.0},
+    )
+
     # Minimum height termination only working on flat terrain
     t_min_base_heigh = TerminationTermCfg(func=mdp.root_height_below_minimum, params={"minimum_height": 0.10})
 
@@ -429,6 +435,8 @@ class FlatEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         if self.scene.contact_sensor is not None:
             self.scene.contact_sensor.update_period = self.sim.dt
+        if self.scene.contact_forces is not None:
+            self.scene.contact_forces.update_period = self.sim.dt
 
         # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
         # this generates terrains with increasing difficulty and is useful for training
