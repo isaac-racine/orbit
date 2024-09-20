@@ -6,7 +6,7 @@
 from omni.isaac.lab.utils import configclass
 import math
 
-from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import *
+from omni.isaac.lab_tasks.utils.wrappers.rsl_rl_unified_policy import *
 
 #@configclass
 #class PPORunnerCfg(RslRlOnPolicyRunnerCfg):

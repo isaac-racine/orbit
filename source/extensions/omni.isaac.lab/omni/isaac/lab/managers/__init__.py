@@ -27,6 +27,6 @@ from .manager_term_cfg import (
     TerminationTermCfg,
 )
 from .observation_manager import ObservationManager
-from .reward_manager import RewardManager
+from .reward_manager import RewardManager, ModifiedRewardManager
 from .scene_entity_cfg import SceneEntityCfg
 from .termination_manager import TerminationManager

@@ -203,36 +203,36 @@ class MySceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
 
     # Modify ee_pos_cmd
-    # ee_pos_cmd = mdp.UniformPoseSphereCommandCfg( #suppose to return quaternion
-    # 	asset_name="robot",
-    # 	body_name="gripperStator",
-    # 	resampling_time_range=(T_TRAJ_MIN, T_TRAJ_MAX),
-    # 	debug_vis=DEBUG_VIS,
-    # 	ranges=mdp.UniformPoseSphereCommandCfg.Ranges(
-    # 		l_radius=(L_MIN, L_MAX),
-    # 		s_pitch=(-P_MAX, P_MAX), 
-    # 		s_yaw=(-Y_MAX, Y_MAX), 
-    # 		roll=(0.0, 0.0), 
-    # 		pitch=(0.0, 0.0), 
-    # 		yaw=(0.0, 0.0)
-    # 	),
-    # )
-
-    # Modify ee_pos_cmd
-    ee_pos_cmd = mdp.UniformPoseCommandCfg( #suppose to return quaternion
-        asset_name="robot",
-        body_name="gripperStator",
-        resampling_time_range=(T_TRAJ_MIN, T_TRAJ_MAX),
-        debug_vis=DEBUG_VIS,
-        ranges=mdp.UniformPoseCommandCfg.Ranges(
-            pos_x=(-0.5, 0.5),
-            pos_y=(-0.5, 0.5), 
-            pos_z=(0.2, 1), 
-            roll=(-math.pi, math.pi), 
-            pitch=(-math.pi, math.pi), 
-            yaw=(-math.pi, math.pi)
-        ),
+    ee_pos_cmd = mdp.UniformPoseSphereCommandCfg( #suppose to return quaternion
+    	asset_name="robot",
+    	body_name="gripperStator",
+    	resampling_time_range=(T_TRAJ_MIN, T_TRAJ_MAX),
+    	debug_vis=True,
+    	ranges=mdp.UniformPoseSphereCommandCfg.Ranges(
+    		l_radius=(L_MIN, L_MAX),
+    		s_pitch=(-P_MAX, P_MAX), 
+    		s_yaw=(-Y_MAX, Y_MAX), 
+    		roll=(-math.pi, math.pi), 
+    		pitch=(-math.pi/2, math.pi/2), 
+    		yaw=(-math.pi, math.pi)
+    	),
     )
+
+    # ee_pos_cmd
+    # ee_pos_cmd = mdp.UniformPoseCommandCfg( #suppose to return quaternion
+    #     asset_name="robot",
+    #     body_name="gripperStator",
+    #     resampling_time_range=(T_TRAJ_MIN, T_TRAJ_MAX),
+    #     debug_vis=DEBUG_VIS,
+    #     ranges=mdp.UniformPoseCommandCfg.Ranges(
+    #         pos_x=(-0.5, 0.5),
+    #         pos_y=(-0.5, 0.5), 
+    #         pos_z=(0.2, 1), 
+    #         roll=(-math.pi, math.pi), 
+    #         pitch=(-math.pi, math.pi), 
+    #         yaw=(-math.pi, math.pi)
+    #     ),
+    # )
 
 
     base_velocity_cmd = mdp.UniformVelocityCommandCfg(
@@ -245,7 +245,8 @@ class CommandsCfg:
         debug_vis=DEBUG_VIS,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(-MAX_CMD_LINSPEED, MAX_CMD_LINSPEED),
-            lin_vel_y=(-MAX_CMD_LINSPEED, MAX_CMD_LINSPEED),
+            #lin_vel_y=(-MAX_CMD_LINSPEED, MAX_CMD_LINSPEED),
+            lin_vel_y=(-0.0, 0.0),
             ang_vel_z=(-MAX_CMD_YAWSPEED, MAX_CMD_YAWSPEED),
             heading=(-math.pi, math.pi)
             #lin_vel_x=(0.5, 0.5),
@@ -284,24 +285,32 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         #Base state R5(roll, pitch and ang velocities)
+        base_ori_roll_pitch = ObservationTermCfg(func=mdp.base_ori_roll_pitch, noise=Unoise(n_min=-0.2, n_max=0.2))
         base_ang_vel = ObservationTermCfg(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
-        base_lin_vel = ObservationTermCfg(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-        projected_gravity = ObservationTermCfg(
-            func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
+
+        #base_lin_vel = ObservationTermCfg(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        # projected_gravity = ObservationTermCfg(
+        #     func=mdp.projected_gravity,
+        #     noise=Unoise(n_min=-0.05, n_max=0.05),
+        # )
         
         #Arm State R12 (joint pose and velocity) (maybe R14)
         #Leg State R28 (joint pos, joint vel, foot contact)
         joint_pos = ObservationTermCfg(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObservationTermCfg(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+        # TODO :add foot contact info
+
 
         #Last action R18 (ee pose cmd, ee orientation cmd, base vel cmd)
         actions = ObservationTermCfg(func=mdp.last_action)
+
+        #end-effector position and orientation command
         eepos_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "ee_pos_cmd"})
+
+        #base velocity command [v_cmd, w_yaw_cmd]
         vel_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "base_velocity_cmd"})
 
-        #Environment extrinsics R20 (...)
+        #Environment extrinsics R20 (...) for sim-to-real transfer
 
 
 
@@ -373,12 +382,12 @@ class EventCfg:
         },
     )
     # interval
-    push_robot = EventTermCfg(
-        func=mdp.push_by_setting_velocity,
-        mode="interval",
-        interval_range_s=(4.0, _EPISODE_LENGTH),
-        params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}}
-    )
+    # push_robot = EventTermCfg(
+    #     func=mdp.push_by_setting_velocity,
+    #     mode="interval",
+    #     interval_range_s=(4.0, _EPISODE_LENGTH),
+    #     params={"velocity_range": {"x": (-MAX_PUSHSPEED, MAX_PUSHSPEED), "y": (-MAX_PUSHSPEED, MAX_PUSHSPEED)}}
+    # )
 
 
 @configclass
@@ -408,6 +417,12 @@ class RewardsCfg:
 @configclass
 class TerminationsCfg:
     time_out = TerminationTermCfg(func=mdp.time_out, time_out=True)
+
+    # Minimum height termination only working on flat terrain
+    t_min_base_heigh = TerminationTermCfg(func=mdp.root_height_below_minimum, params={"minimum_height": 0.10})
+
+    #termination according to base position and ee pose cmd 
+    #t_wrong_ee_cmd = TerminationTermCfg(func=mdp.wrong_ee_cmd_for_base_oritation, params={"command_name": "ee_pos_cmd"})
 
 
 @configclass

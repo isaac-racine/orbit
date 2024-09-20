@@ -16,6 +16,7 @@ from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import FRAME_MARKER_CFG
 from omni.isaac.lab.utils.math import combine_frame_transforms, compute_pose_error, quat_from_euler_xyz, quat_unique
+import omni.isaac.lab.utils.math as math_utils
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
@@ -206,10 +207,11 @@ class UniformPoseSphereCommand(CommandTerm):
         # extract the robot and body index for which the command is generated
         self.robot: Articulation = env.scene[cfg.asset_name]
         self.body_idx = self.robot.find_bodies(cfg.body_name)[0][0]
+    
 
         # create buffers
 
-        self.pose_sphere_command = torch.zeros(self.num_envs, 3, device=self.device) # 
+        self.pose_p_end_sphere = torch.zeros(self.num_envs, 3, device=self.device) # 
         self.pose_p_end_w = torch.zeros(self.num_envs, 3, device=self.device)
 
         # -- commands: (x, y, z, qw, qx, qy, qz) in root frame
@@ -244,8 +246,6 @@ class UniformPoseSphereCommand(CommandTerm):
 
     def _update_metrics(self):
 
-
-
         # transform command from base frame to simulation world frame
         self.pose_command_w[:, :3], self.pose_command_w[:, 3:] = combine_frame_transforms(
             self.robot.data.root_pos_w,
@@ -253,9 +253,6 @@ class UniformPoseSphereCommand(CommandTerm):
             self.pose_command_b[:, :3],
             self.pose_command_b[:, 3:],
         )
-
-        
-
 
         # compute the error
         pos_error, rot_error = compute_pose_error(
@@ -271,31 +268,34 @@ class UniformPoseSphereCommand(CommandTerm):
         # sample new pose targets
         # -- position
         r = torch.empty(len(env_ids), device=self.device)
-        self.pose_sphere_command[env_ids, 0] = r.uniform_(*self.cfg.ranges.l_radius)
-        self.pose_sphere_command[env_ids, 1] = r.uniform_(*self.cfg.ranges.s_pitch)
-        self.pose_sphere_command[env_ids, 2] = r.uniform_(*self.cfg.ranges.s_yaw)
+        self.pose_p_end_sphere[env_ids, 0] = r.uniform_(*self.cfg.ranges.l_radius)
+        self.pose_p_end_sphere[env_ids, 1] = r.uniform_(*self.cfg.ranges.s_pitch)
+        self.pose_p_end_sphere[env_ids, 2] = r.uniform_(*self.cfg.ranges.s_yaw)
 
         # Spherical to Cartesian conversion (assuming Z is up)
-        r = self.pose_sphere_command[:, 0]
-        pitch = self.pose_sphere_command[:, 1]  # Polar angle
-        yaw = self.pose_sphere_command[:, 2]    # Azimuthal angle
+        r = self.pose_p_end_sphere[env_ids, 0]      
+        pitch = self.pose_p_end_sphere[env_ids, 1]  
+        yaw = self.pose_p_end_sphere[env_ids, 2]     
 
         x = r * torch.sin(pitch) * torch.cos(yaw)
         y = r * torch.sin(pitch) * torch.sin(yaw)
         z = r * torch.cos(pitch)  # Use pitch for z
 
-        self.pose_command_b = torch.stack((x, y, z), dim=-1)
+        
+        # Pose cartesian in base frame
+        self.pose_command_b[env_ids, :3] = torch.stack((x, y, z), dim=-1) 
 
-        # self.pose_command_b[env_ids, 0] = r.uniform_(*self.cfg.ranges.pos_x)
-        # self.pose_command_b[env_ids, 1] = r.uniform_(*self.cfg.ranges.pos_y)
-        # self.pose_command_b[env_ids, 2] = r.uniform_(*self.cfg.ranges.pos_z)
+        # # Linear transformation according to the base orientation to but it in the world frame
+        # self.pose_p_end_w = math_utils.transform_points(self.pose_p_end_b, self._asset.data.body_state_w, quat)
+        # # Adding the pose of the base to get the p_end in the world frame
+        # self.pose_p_end_w = self.pose_p_end_w + 
 
         # -- orientation
-        euler_angles = torch.zeros_like(self.pose_command_b[env_ids, :3])
-        euler_angles[:, 0].uniform_(*self.cfg.ranges.roll)
-        euler_angles[:, 1].uniform_(*self.cfg.ranges.pitch)
-        euler_angles[:, 2].uniform_(*self.cfg.ranges.yaw)
-        quat = quat_from_euler_xyz(euler_angles[:, 0], euler_angles[:, 1], euler_angles[:, 2])
+        euler_angles_cmd = torch.zeros_like(self.pose_command_b[env_ids, :3])
+        euler_angles_cmd[:, 0].uniform_(*self.cfg.ranges.roll)
+        euler_angles_cmd[:, 1].uniform_(*self.cfg.ranges.pitch)
+        euler_angles_cmd[:, 2].uniform_(*self.cfg.ranges.yaw)
+        quat = quat_from_euler_xyz(euler_angles_cmd[:, 0], euler_angles_cmd[:, 1], euler_angles_cmd[:, 2])
         # make sure the quaternion has real part as positive
         self.pose_command_b[env_ids, 3:] = quat_unique(quat) if self.cfg.make_quat_unique else quat
 
