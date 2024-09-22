@@ -271,4 +271,65 @@ class ModifiedRewardManager(RewardManager):
             self._episode_sums[name] += value
 
         return self._reward_buf, self._episode_sums
+    
+
+    
+class UnifiedPolicyRewardManager(RewardManager):
+    """ """
+
+    _env: ManagerBasedRLEnv
+    """The environment instance."""
+
+    def __init__(self, cfg: object, env: ManagerBasedRLEnv):
+        """Initialize the reward manager.
+
+        Args:
+            cfg: The configuration object or dictionary (``dict[str, RewardTermCfg]``).
+            env: The environment instance.
+        """
+        super().__init__(cfg, env)
+
+        self._arm_reward_buf = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+
+    def compute(self, dt: float) -> tuple[torch.Tensor,  torch.Tensor]:
+
+
+        """Computes the reward signal as a weighted sum of individual terms.
+
+        This function calls each reward term managed by the class and adds them to compute the net
+        reward signal. It also updates the episodic sums corresponding to individual reward terms.
+
+        Args:
+            dt: The time-step interval of the environment.
+
+        Returns:
+            The net reward signal of shape (num_envs,).
+        """
+        # reset computation
+        self._reward_buf[:] = 0.0
+        self._arm_reward_buf[:] = 0.0
+        # iterate over all the reward terms
+        for name, term_cfg in zip(self._term_names, self._term_cfgs):
+            # skip if weight is zero (kind of a micro-optimization)
+            if term_cfg.weight == 0.0:
+                continue
+            # compute term's value
+            value = term_cfg.func(self._env, **term_cfg.params) * term_cfg.weight * dt
+
+            # update loco reward
+            if name[:3] == "r_l":
+                self._reward_buf += value
+            # update manip sum
+            elif name[:3] == "r_m":
+                self._arm_reward_buf += value
+            else:
+                raise ValueError("The reward must start with r_loco or r_manip")
+
+
+        # No sure why??
+        # self._reward_buf /= 100
+        # self._arm_reward_buf /= 100
+
+
+        return self._reward_buf, self._arm_reward_buf
         

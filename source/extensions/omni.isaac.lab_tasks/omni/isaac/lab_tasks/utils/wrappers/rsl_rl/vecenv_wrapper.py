@@ -21,7 +21,7 @@ import torch
 
 from rsl_rl.env import VecEnv
 
-from omni.isaac.lab.envs import DirectRLEnv, ManagerBasedRLEnv, ModifiedManagerBasedRLEnv
+from omni.isaac.lab.envs import DirectRLEnv, ManagerBasedRLEnv, ModifiedManagerBasedRLEnv,UnifiedPolicyManagerBasedRLEnv
 
 
 class RslRlVecEnvWrapper(VecEnv):

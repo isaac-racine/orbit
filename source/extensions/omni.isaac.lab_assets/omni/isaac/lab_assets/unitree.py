@@ -225,9 +225,11 @@ UNITREE_GO2_Z1_CFG = ArticulationCfg(
         ),
         "base_arm": ImplicitActuatorCfg(
             joint_names_expr=["joint.*"],
-            # all parameters use USD values
-			effort_limit=None,velocity_limit=None,
-            friction=None,armature=None,
+            # all parameters use USD values (If None, the limit is set to the value specified in the USD joint prim.)
+			effort_limit=33, #N.m
+            velocity_limit=180, #180 deg/s 
+            friction=None, # USD joint friction=1
+            armature=None,
             #stiffness=None,damping=None,
             stiffness=25.0, damping=0.5,
         ),

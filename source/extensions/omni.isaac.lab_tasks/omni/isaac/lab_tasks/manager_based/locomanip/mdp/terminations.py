@@ -20,19 +20,29 @@ from omni.isaac.lab.sensors import ContactSensor
 import omni.isaac.lab.utils.math as math_utils
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ModifiedManagerBasedRLEnv
+    from omni.isaac.lab.envs import ModifiedManagerBasedRLEnv, UnifiedPolicyManagerBasedRLEnv
     from omni.isaac.lab.managers.command_manager import CommandTerm
 
 """
 MDP terminations.
 """
-def time_out(env: ModifiedManagerBasedRLEnv) -> torch.Tensor:
+def time_out(env: UnifiedPolicyManagerBasedRLEnv) -> torch.Tensor:
     """Terminate the episode when the episode length exceeds the maximum episode length."""
     return env.episode_length_buf >= env.max_episode_length
 
+def illegal_contact(env: UnifiedPolicyManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Terminate when the contact force on the sensor exceeds the force threshold."""
+    # extract the used quantities (to enable type-hinting)
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    net_contact_forces = contact_sensor.data.net_forces_w_history
+    # check if any contact force exceeds the threshold
+    return torch.any(
+        torch.max(torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0] > threshold, dim=1
+    )
+
 
 def root_height_below_minimum(
-    env: ModifiedManagerBasedRLEnv, minimum_height: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: UnifiedPolicyManagerBasedRLEnv, minimum_height: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
     """Terminate when the asset's root height is below the minimum height.
 
@@ -41,10 +51,33 @@ def root_height_below_minimum(
     """
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
+    # print("height of root")
+    if asset.data.root_pos_w[0, 2] < minimum_height:
+        print("height of root termination")
+
     return asset.data.root_pos_w[:, 2] < minimum_height
 
+def body_height_below_minimum(
+    env: UnifiedPolicyManagerBasedRLEnv, minimum_height: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Terminate when the asset's body_ids height is below the minimum height.
+
+    Note:
+        This is currently only supported for flat terrains, i.e. the minimum height is in the world frame.
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: RigidObject = env.scene[asset_cfg.name]
+
+    curr_pos_w = asset.data.body_state_w[:, asset_cfg.body_ids[0], :3] # type: ignore
+    # print("height of link03")
+    # print(curr_pos_w[:, 2])
+    if curr_pos_w[0, 2] < minimum_height:
+        print("height of link03 termination")
+
+    return curr_pos_w[:, 2] < minimum_height
+
 def wrong_ee_cmd_for_base_oritation(
-    env: ModifiedManagerBasedRLEnv, command_name: str = "ee_pos_cmd", asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: UnifiedPolicyManagerBasedRLEnv, command_name: str = "ee_pos_cmd", asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
     """Terminate when the end effector position command is considered not ok for the current base orientation."""
 

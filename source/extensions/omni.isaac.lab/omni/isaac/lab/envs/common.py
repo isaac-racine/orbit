@@ -109,3 +109,15 @@ The tuple contains batched information for each sub-environment. The information
 5. **Extras**: A dictionary containing additional information from the environment.
 6. **Reward_term**: A dictionary containing the name a the reward and the value of the reward.
 """
+VecEnvStepReturnUnifiedPolicy = tuple[VecEnvObs, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict]
+"""The environment signals processed at the end of each step.
+
+The tuple contains batched information for each sub-environment. The information is stored in the following order:
+
+1. **Observations**: The observations from the environment.
+2. **Rewards**: The rewards from the environment.
+3. **Arm_Rewards**: A dictionary containing the name a the reward and the value of the reward.
+4. **Terminated Dones**: Whether the environment reached a terminal state, such as task success or robot falling etc.
+5. **Timeout Dones**: Whether the environment reached a timeout state, such as end of max episode length.
+6. **Extras**: A dictionary containing additional information from the environment.
+"""

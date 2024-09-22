@@ -12,6 +12,7 @@ import sys
 
 from omni.isaac.lab.app import AppLauncher
 
+
 # local imports
 import cli_args  # isort: skip
 
@@ -42,6 +43,7 @@ sys.argv = [sys.argv[0]] + hydra_args
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
+
 """Rest everything follows."""
 
 import gymnasium as gym
@@ -49,9 +51,11 @@ import os
 import torch
 from datetime import datetime
 
-from rsl_rl_unified_policy.runners import OnPolicyRunner
+#from rsl_rl_unified_policy.runners import OnPolicyRunner
+from rsl_rl_mod.runners import OnPolicyRunner
 
-from omni.isaac.lab.envs import DirectRLEnvCfg, ManagerBasedRLEnvCfg, ModifiedManagerBasedRLEnv
+
+from omni.isaac.lab.envs import DirectRLEnvCfg, ManagerBasedRLEnvCfg, ModifiedManagerBasedRLEnv, UnifiedPolicyManagerBasedRLEnv
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
 
@@ -68,7 +72,7 @@ torch.backends.cudnn.benchmark = False
 
 
 @hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
-def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
+def main(env_cfg: UnifiedPolicyManagerBasedRLEnv | DirectRLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
     """Train with RSL-RL agent."""
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)

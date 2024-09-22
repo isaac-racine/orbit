@@ -19,9 +19,10 @@ The following example shows how to wrap an environment for RSL-RL:
 import gymnasium as gym
 import torch
 
-from rsl_rl_unified_policy.env import VecEnv
+#from rsl_rl_unified_policy.env import VecEnv
+from rsl_rl_mod.env import VecEnv
 
-from omni.isaac.lab.envs import DirectRLEnv, ModifiedManagerBasedRLEnv
+from omni.isaac.lab.envs import DirectRLEnv, ModifiedManagerBasedRLEnv, UnifiedPolicyManagerBasedRLEnv
 
 
 class RslRlVecEnvWrapper(VecEnv):
@@ -43,7 +44,7 @@ class RslRlVecEnvWrapper(VecEnv):
         https://github.com/leggedrobotics/rsl_rl/blob/master/rsl_rl/env/vec_env.py
     """
 
-    def __init__(self, env: ModifiedManagerBasedRLEnv):
+    def __init__(self, env: UnifiedPolicyManagerBasedRLEnv):
         """Initializes the wrapper.
 
         Note:
@@ -56,7 +57,7 @@ class RslRlVecEnvWrapper(VecEnv):
             ValueError: When the environment is not an instance of :class:`ManagerBasedRLEnv`.
         """
         # check that input is valid
-        if not isinstance(env.unwrapped, ModifiedManagerBasedRLEnv) and not isinstance(env.unwrapped, DirectRLEnv):
+        if not isinstance(env.unwrapped, UnifiedPolicyManagerBasedRLEnv) and not isinstance(env.unwrapped, DirectRLEnv):
             raise ValueError(
                 "The environment must be inherited from ManagerBasedRLEnv or DirectRLEnv. Environment type:"
                 f" {type(env)}"
@@ -126,7 +127,7 @@ class RslRlVecEnvWrapper(VecEnv):
         return cls.__name__
 
     @property
-    def unwrapped(self) -> ModifiedManagerBasedRLEnv:
+    def unwrapped(self) -> UnifiedPolicyManagerBasedRLEnv:
         """Returns the base environment of the wrapper.
 
         This will be the bare :class:`gymnasium.Env` environment, underneath all layers of wrappers.
@@ -172,9 +173,9 @@ class RslRlVecEnvWrapper(VecEnv):
         # return observations
         return obs_dict["policy"], {"observations": obs_dict}
 
-    def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict, dict]:
+    def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict]:
         # record step information
-        obs_dict, rew, terminated, truncated, extras, rew_type = self.env.step(actions)
+        obs_dict, rew, arm_rew, terminated, truncated, extras= self.env.step(actions)
         # compute dones for compatibility with RSL-RL
         dones = (terminated | truncated).to(dtype=torch.long)
         # move extra observations to the extras dict
@@ -186,7 +187,7 @@ class RslRlVecEnvWrapper(VecEnv):
             extras["time_outs"] = truncated
 
         # return the step information
-        return obs, rew, dones, extras, rew_type
+        return obs, rew, arm_rew, dones, extras,
 
     def close(self):  # noqa: D102
         return self.env.close()
