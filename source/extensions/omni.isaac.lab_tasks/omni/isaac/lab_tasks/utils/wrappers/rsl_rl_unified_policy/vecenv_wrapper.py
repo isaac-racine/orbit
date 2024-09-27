@@ -86,6 +86,11 @@ class RslRlVecEnvWrapper(VecEnv):
             self.num_privileged_obs = self.unwrapped.num_states
         else:
             self.num_privileged_obs = 0
+
+        self.history_length = self.unwrapped.history_length_
+        self.num_priv = self.unwrapped.num_priv_
+        self.num_proprio = self.unwrapped.num_proprio_
+
         # reset at the start since the RSL-RL runner does not call reset
         self.env.reset()
 

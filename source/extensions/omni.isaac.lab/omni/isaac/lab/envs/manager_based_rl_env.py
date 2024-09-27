@@ -19,7 +19,7 @@ from omni.isaac.lab.managers import CommandManager, CurriculumManager, RewardMan
 
 from .common import VecEnvStepReturn, VecEnvStepReturnModified, VecEnvStepReturnUnifiedPolicy
 from .manager_based_env import ManagerBasedEnv
-from .manager_based_rl_env_cfg import ManagerBasedRLEnvCfg
+from .manager_based_rl_env_cfg import ManagerBasedRLEnvCfg, UnifiedPolicyManagerBasedRLEnvCfg
 
 
 class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
@@ -468,6 +468,50 @@ class ModifiedManagerBasedRLEnv(ManagerBasedRLEnv):
 class UnifiedPolicyManagerBasedRLEnv(ManagerBasedRLEnv):
     """A custom environment class"""
 
+    cfg: UnifiedPolicyManagerBasedRLEnvCfg
+    """Configuration for the environment."""
+
+    def __init__(self, cfg: UnifiedPolicyManagerBasedRLEnvCfg, render_mode: str | None = None, **kwargs):
+        """Initialize the environment.
+
+        Args:
+            cfg: The configuration for the environment.
+            render_mode: The render mode for the environment. Defaults to None, which
+                is similar to ``"human"``.
+        """
+        # initialize the base class to setup the scene.
+        super().__init__(cfg=cfg)
+        # store the render mode
+        self.render_mode = render_mode
+
+        self.sim.set_render_mode(self.sim.RenderMode.NO_RENDERING)
+        
+        # initialize data and constants
+        # -- counter for curriculum
+        self.common_step_counter = 0
+        # -- init buffers
+        self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
+        self.metadata["render_fps"] = 1 / self.step_dt
+
+        print("[INFO]: Completed setting up the environment...")
+
+    @property
+    def num_priv_(self) -> int:
+        """Maximum episode length in seconds."""
+        return self.cfg.num_priv
+    
+    @property
+    def num_proprio_(self) -> int:
+        """Maximum episode length in seconds."""
+        return self.cfg.num_proprio
+    
+    @property
+    def history_length_(self) -> int:
+        """Maximum episode length in seconds."""
+        return self.cfg.history_len
+    
+
 
     def load_managers(self):
         # note: this order is important since observation manager needs to know the command and action managers
@@ -567,6 +611,8 @@ class UnifiedPolicyManagerBasedRLEnv(ManagerBasedRLEnv):
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute()
+
+        print(self.obs_buf)
 
         # return observations, rewards, resets and extras
         return self.obs_buf, self.reward_buf, self.arm_reward_buf, self.reset_terminated, self.reset_time_outs, self.extras

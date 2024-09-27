@@ -16,7 +16,7 @@ class RslRlPpoActorCriticCfg:
     class_name: str = "ActorCritic"
     """The policy class name. Default is ActorCritic."""
 
-    init_noise_std: float = MISSING
+    init_noise_std: float = MISSING #list[list[float]] = MISSING
     """The initial noise standard deviation for the policy."""
 
     actor_hidden_dims: list[int] = MISSING
@@ -27,6 +27,15 @@ class RslRlPpoActorCriticCfg:
 
     activation: str = MISSING
     """The activation function for the actor and critic networks."""
+
+    leg_control_head_hidden_dims: list[int] = MISSING
+    arm_control_head_hidden_dims: list[int] = MISSING
+
+    priv_encoder_dims: list[int] = MISSING
+
+    num_leg_actions: int = MISSING
+    num_arm_actions: int = MISSING
+
 
 
 @configclass
@@ -71,6 +80,12 @@ class RslRlPpoAlgorithmCfg:
 
     max_grad_norm: float = MISSING
     """The maximum gradient norm."""
+
+    min_policy_std: list[list[float]] = MISSING
+    mixing_schedule: list[float] = MISSING
+    dagger_update_freq: int = MISSING
+    priv_reg_coef_schedual: list[float] = MISSING
+
 
 
 @configclass

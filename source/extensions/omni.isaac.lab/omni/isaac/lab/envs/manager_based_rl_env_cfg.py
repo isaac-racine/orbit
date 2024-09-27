@@ -78,3 +78,15 @@ class ManagerBasedRLEnvCfg(ManagerBasedEnvCfg):
 
     Please refer to the :class:`omni.isaac.lab.managers.CommandManager` class for more details.
     """
+
+
+@configclass
+class UnifiedPolicyManagerBasedRLEnvCfg(ManagerBasedRLEnvCfg):
+    """Configuration for a reinforcement learning environment with the manager-based workflow."""
+
+
+    num_proprio: int = MISSING
+
+    num_priv: int = MISSING
+
+    history_len: int = MISSING

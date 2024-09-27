@@ -150,7 +150,7 @@ class MySceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
 
     # Modify ee_pos_cmd
-    ee_pos_cmd = mdp.UniformPoseSphereCommandCfg( #suppose to return quaternion
+    ee_pos_cmd = mdp.UniformPoseSphereCommandCfg(
     	asset_name="robot",
     	body_name="gripperStator",
     	resampling_time_range=(T_TRAJ_MIN, T_TRAJ_MAX),
@@ -197,36 +197,65 @@ class ObservationsCfg:
     class PolicyCfg(ObservationGroupCfg):
         """Observations for policy group."""
 
-        #Base state R5(roll, pitch and ang velocities)
-        base_ori_roll_pitch = ObservationTermCfg(func=mdp.base_ori_roll_pitch, noise=Unoise(n_min=-0.2, n_max=0.2))
-        base_ang_vel = ObservationTermCfg(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
 
-        #base_lin_vel = ObservationTermCfg(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        ####### Original code Observations ########
+        #  Base orientation               dim = 2 [roll , pitch]
+        #  Angular velocity               dim = 3 [w_x,w_y,w_z]
+        #  Joint pose                     dim = 20 
+        #  Joint velocity                 dim = 20
+        #  Last_action                    dim = 18
+        #  Foot contact                   dim = 4
+        #  Base velocity command          dim = 3
+        #  End Effector goal pose         dim = 3
+        #  End Effector delta orientation dim = 3
+        ########################### Total dim = 76
+
+        #Base orientation [roll, pitch] dim = 2
+        base_ori_roll_pitch = ObservationTermCfg(func=mdp.base_ori_roll_pitch, noise=Unoise(n_min=-0.2, n_max=0.2))
+
+        #Base velocity dim = 3
+        base_ang_vel = ObservationTermCfg(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
         
-        #Arm State R12 (joint pose and velocity) (maybe R14)
-        #Leg State R28 (joint pos, joint vel, foot contact)
+        #Arm State (joint pose and velocity) dim = 14
+        #Leg State (joint pos, joint vel, foot contact) dim = 24
+        # Total dim = 38
         joint_pos = ObservationTermCfg(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObservationTermCfg(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
-        # TODO :add foot contact info
 
-
-        #Last action R18 (ee pose cmd, ee orientation cmd, base vel cmd)
+        #Last action (For each joint) dim = 19
         actions = ObservationTermCfg(func=mdp.last_action)
 
-        #end-effector position and orientation command
-        eepos_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "ee_pos_cmd"})
-
-        #base velocity command [v_cmd, w_yaw_cmd]
-        vel_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "base_velocity_cmd"})
-
-        #Environment extrinsics R20 (...) for sim-to-real transfer
-
-        projected_gravity = ObservationTermCfg(
-            func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
+        #Foot contact dim = 4 
+        foot_contact = ObservationTermCfg(
+            func=mdp.foot_contact,
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names=".*_foot"),
+                "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot"),
+                "threshold": 1.0,
+            },
         )
 
+        #base velocity command [v_cmd, w_yaw_cmd] dim = 3
+        vel_commands = ObservationTermCfg(func=mdp.generated_commands, params={"command_name": "base_velocity_cmd"})
+
+        #End-effector goal position dim = 3
+        ee_goal_pos_w =  ObservationTermCfg(func=mdp.ee_goal_pos_w, params={"command_name": "ee_pos_cmd", 
+                                                                            "asset_cfg" : SceneEntityCfg("robot",body_names='gripperStator')})
+
+        #End-effector orientation delta dim = 4 TODO: suppose to be in EULER goal ori [roll,pitch,yaw] dim = 3
+        ee_delta_ori = ObservationTermCfg(func=mdp.ee_goal_ori_w, params={"command_name": "ee_pos_cmd", 
+                                                                                      "asset_cfg" : SceneEntityCfg("robot",body_names='gripperStator')})
+
+
         #OTHER
+
+        # #Projected gravity dim = 3
+        # projected_gravity = ObservationTermCfg(
+        #     func=mdp.projected_gravity,
+        #     noise=Unoise(n_min=-0.05, n_max=0.05),
+        # )
+
+        
         #
         # binary_contact = ObservationTermCfg(func=mdp.binary_contact, params={"sensor_cfg": SceneEntityCfg("contact_sensor", body_names=".*_foot")})
         # height_scan = ObservationTermCfg(
@@ -235,6 +264,28 @@ class ObservationsCfg:
         # 	noise=Unoise(n_min=-0.1, n_max=0.1),
         # 	clip=(-1.0, 1.0),
         # ) if USE_HEIGHT_SCAN else None
+
+
+        ########## Priviledge information ###########
+
+        # Mass params
+        # mass_params = ObservationTermCfg(
+        #     func=mdp.get_masses,
+        #     params={
+        #     "env_ids": None,
+        #     "asset_cfg": SceneEntityCfg("robot",  body_names="base"), 
+        #     },
+        # )
+
+        # TODO:Friction coeffs
+
+
+
+        # TODO:Motor_strength 
+
+
+
+
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -478,6 +529,12 @@ class FlatEnvCfg(ManagerBasedRLEnvCfg):
         # general settings
         self.decimation = 4
         self.episode_length_s = _EPISODE_LENGTH
+
+        self.num_proprio = 2 + 3 + 14 + 24 + 19 + 4 + 3 + 3 + 4 
+        self.num_priv = 0
+        self.history_len = 10
+
+
         # simulation settings
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation

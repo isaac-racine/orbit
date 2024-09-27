@@ -42,4 +42,4 @@ from .direct_rl_env_cfg import DirectRLEnvCfg
 from .manager_based_env import ManagerBasedEnv
 from .manager_based_env_cfg import ManagerBasedEnvCfg
 from .manager_based_rl_env import ManagerBasedRLEnv, ModifiedManagerBasedRLEnv, UnifiedPolicyManagerBasedRLEnv
-from .manager_based_rl_env_cfg import ManagerBasedRLEnvCfg
+from .manager_based_rl_env_cfg import ManagerBasedRLEnvCfg, UnifiedPolicyManagerBasedRLEnvCfg
