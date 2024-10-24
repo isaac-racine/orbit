@@ -48,6 +48,7 @@ gym.register(
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     kwargs={
         "env_cfg_entry_point": ik_abs_env_cfg.FrankaCubeLiftEnvCfg,
+        "robomimic_bc_cfg_entry_point": os.path.join(agents.__path__[0], "robomimic/bc.json"),
     },
     disable_env_checker=True,
 )
@@ -57,6 +58,7 @@ gym.register(
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     kwargs={
         "env_cfg_entry_point": ik_abs_env_cfg.FrankaTeddyBearLiftEnvCfg,
+        
     },
     disable_env_checker=True,
 )

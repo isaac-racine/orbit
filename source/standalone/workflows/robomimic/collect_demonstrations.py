@@ -61,11 +61,11 @@ def pre_process_actions(delta_pose: torch.Tensor, gripper_command: bool) -> torc
 
 def main():
     """Collect demonstrations from the environment using teleop interfaces."""
-    assert (
-        args_cli.task == "Isaac-Lift-Cube-Franka-IK-Rel-v0"
-    ), "Only 'Isaac-Lift-Cube-Franka-IK-Rel-v0' is supported currently."
+    # assert (
+    #     args_cli.task == "Isaac-Lift-Cube-Franka-IK-Rel-v0" or args_cli.task == "Isaac-Lift-Cube-D1-IK-Rel-v0" or args_cli.task == "Isaac-Lift-Cube-D1-IK-Abs-v0" or args_cli.task == "Isaac-Lift-Cube-D1-v0"
+    # ), "Only 'Isaac-Lift-Cube-Franka-IK-Rel-v0' is supported currently."
     # parse configuration
-    env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs)
+    env_cfg = parse_env_cfg(args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs,)
 
     # modify configuration such that the environment runs indefinitely
     # until goal is reached
@@ -122,10 +122,14 @@ def main():
         while not collector_interface.is_stopped():
             # get keyboard command
             delta_pose, gripper_command = teleop_interface.advance()
+            
+
             # convert to torch
             delta_pose = torch.tensor(delta_pose, dtype=torch.float, device=env.device).repeat(env.num_envs, 1)
             # compute actions based on environment
             actions = pre_process_actions(delta_pose, gripper_command)
+
+            print(actions)
 
             # TODO: Deal with the case when reset is triggered by teleoperation device.
             #   The observations need to be recollected.
@@ -138,6 +142,9 @@ def main():
 
             # perform action on environment
             obs_dict, rewards, terminated, truncated, info = env.step(actions)
+            
+            print(obs_dict)
+
             dones = terminated | truncated
             # check that simulation is stopped or not
             if env.unwrapped.sim.is_stopped():

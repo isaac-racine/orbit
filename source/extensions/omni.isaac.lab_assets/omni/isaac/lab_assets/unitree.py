@@ -386,3 +386,68 @@ G1_MINIMAL_CFG.spawn.usd_path = f"{ISAACLAB_NUCLEUS_DIR}/Robots/Unitree/G1/g1_mi
 
 This configuration removes most collision meshes to speed up simulation.
 """
+
+
+UNITREE_D1_CFG = ArticulationCfg(
+    spawn=sim_utils.UsdFileCfg(
+        usd_path=f"/home/isaac/Omniverse/Unitree/D1_gripper/d1_description/urdf/d1_description_mod/d1_description_mod.usd",
+        activate_contact_sensors=False,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            max_depenetration_velocity=5.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            enabled_self_collisions=True, solver_position_iteration_count=8, solver_velocity_iteration_count=0
+        ),
+        # collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.005, rest_offset=0.0),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        joint_pos={
+            "Joint1": 0.0,
+            "Joint2": -0.569,
+            "Joint3": 0.0,
+            "Joint4": -2.0,
+            "Joint5": 0.0,
+            "Joint6": 2.0,
+            "Joint7_1": 0.03, # Finger 1
+            "Joint7_2": -0.03,  # Finger 2
+        },
+    ),
+    actuators={
+        "d1_shoulder": ImplicitActuatorCfg(
+            joint_names_expr=["Joint[1-2]"],
+            effort_limit=87.0,
+            velocity_limit=2.175,
+            stiffness=80.0,
+            damping=4.0,
+        ),
+        "d1_forearm": ImplicitActuatorCfg(
+            joint_names_expr=["Joint[5-6]"],
+            effort_limit=12.0,
+            velocity_limit=2.61,
+            stiffness=80.0,
+            damping=4.0,
+        ),
+        "d1_hand": ImplicitActuatorCfg(
+            joint_names_expr=["Joint7_.*"],
+            effort_limit=200.0,
+            velocity_limit=0.2,
+            stiffness=2e3,
+            damping=1e2,
+        ),
+    },
+    soft_joint_pos_limit_factor=0.1,
+)
+"""Configuration of d1 unitree robot arm."""
+
+
+UNITREE_D1_HIGH_PD_CFG = UNITREE_D1_CFG.copy()
+UNITREE_D1_HIGH_PD_CFG.spawn.rigid_props.disable_gravity = True
+UNITREE_D1_HIGH_PD_CFG.actuators["d1_shoulder"].stiffness = 200.0
+UNITREE_D1_HIGH_PD_CFG.actuators["d1_shoulder"].damping = 20.0
+UNITREE_D1_HIGH_PD_CFG.actuators["d1_forearm"].stiffness = 200.0
+UNITREE_D1_HIGH_PD_CFG.actuators["d1_forearm"].damping = 20.0
+"""Configuration of Franka Emika d1 robot with stiffer PD control.
+
+This configuration is useful for task-space control using differential IK.
+"""
